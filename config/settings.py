@@ -93,16 +93,7 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Email Config (Cấu hình sau)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend' # In ra console khi dev
-# Cấu hình Email (Dùng Resend qua giao thức SMTP)
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.resend.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'resend'  # Luôn là 'resend'
-EMAIL_HOST_PASSWORD = os.environ.get('RESEND_API_KEY') # Lấy từ biến môi trường
-DEFAULT_FROM_EMAIL = 'system@sun-automation.id.vn' # Hoặc domain đã verify của bạn
+
 
 LOGIN_REDIRECT_URL = '/'  # Đăng nhập xong về trang chủ
 LOGOUT_REDIRECT_URL = '/accounts/login/' # Đăng xuất xong về trang login
