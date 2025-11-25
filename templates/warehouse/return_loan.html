@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Trả Hàng - Phiếu #{{ loan.id }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow border-0">
+            <div class="card-header bg-danger text-white fw-bold">
+                <i class="bi bi-arrow-return-left"></i> XÁC NHẬN TRẢ HÀNG - PHIẾU #{{ loan.id }}
+            </div>
+            <div class="card-body">
+                <div class="alert alert-light border">
+                    <strong>Người mượn:</strong> {{ loan.nguoi_muon }} <br>
+                    <strong>Ngày mượn:</strong> {{ loan.ngay_muon|date:"d/m/Y" }} <br>
+                    <strong>Lý do:</strong> {{ loan.ly_do }} <br>
+                    <strong>Ghi chú:</strong> {{ loan.ghi_chu }}
+                </div>
+
+                <h6 class="fw-bold mt-3">Danh sách thiết bị đã mượn:</h6>
+                <table class="table table-sm table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Tên thiết bị</th>
+                            <th>Đơn vị tính</th>
+                            <th>Số lượng</th>
+                            <th>Ngày mượn</th>
+                            <th>Ngày trả dự kiến</th>
+                            <th>Tình trạng khi mượn</th>
+                            <th>Ghi chú ban đầu</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in loan.items.all %}
+                        <tr>
+                            <td>{{ item.ten_tai_san }}</td>
+                            <td>{{ item.don_vi_tinh }}</td>
+                            <td>{{ item.so_luong }}</td>
+                            <td>{{ item.ngay_muon|date:"d/m/Y" }}</td>
+                            <td>{{ item.ngay_tra_du_kien|date:"d/m/Y" }}</td>
+                            <td>
+                                {% if item.tinh_trang == 'khac' %}
+                                    {{ item.tinh_trang_khac }} {% else %}
+                                    {{ item.get_tinh_trang_display }} {% endif %}
+                            </td>
+                            <td>{{ item.ghi_chu }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <hr>
+
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    {{ form|crispy }}
+                    
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-danger fw-bold">
+                            <i class="bi bi-upload"></i> GỬI YÊU CẦU TRẢ HÀNG
+                        </button>
+                        <a href="{% url 'loan_detail' loan.id %}" class="btn btn-outline-secondary">Hủy bỏ</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

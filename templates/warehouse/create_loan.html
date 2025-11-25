@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Tạo Phiếu Mượn{% endblock %}
+
+{% block content %}
+<form method="post" enctype="multipart/form-data" id="loanForm" class="pb-5">
+    {% csrf_token %}
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold text-primary text-uppercase"><i class="bi bi-file-earmark-plus-fill"></i> Tạo Phiếu Mượn</h3>
+
+        <div>
+            <a href="{% url 'home' %}" class="btn btn-outline-secondary me-2">Hủy</a>
+            <button type="submit" class="btn btn-success fw-bold px-4 shadow-sm"><i class="bi bi-save"></i> LƯU PHIẾU</button>
+        </div>
+    </div>
+    {% include "warehouse/includes/loan_form_content.html" %}
+
+
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+
+    // =========================================================
+    // 1. LOGIC TỰ ĐỘNG TÌM KIẾM NHÂN VIÊN (AUTOCOMPLETE)
+    // =========================================================
+    var searchInput = $('#id_ma_nhan_vien');
+    var suggestionBox = $('#suggestion-box');
+
+    // Khi gõ phím
+    searchInput.on('input', function() {
+        var query = $(this).val().trim();
+        if (query.length < 1) { 
+            suggestionBox.hide(); 
+            return; 
+        }
+
+        $.ajax({
+            url: "{% url 'api_get_employee' %}",
+            data: { 'query': query },
+            success: function(data) {
+                var html = '';
+                if (data.results && data.results.length > 0) {
+                    data.results.forEach(function(emp) {
+                        html += `
+                            <a href="javascript:void(0)" class="list-group-item list-group-item-action suggestion-item"
+                               data-ma="${emp.ma_nhan_vien}"
+                               data-ten="${emp.ho_ten}"
+                               data-email="${emp.email}"
+                               data-cv="${emp.chuc_vu}"
+                               data-pb="${emp.phong_ban}">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>${emp.ho_ten}</strong> <span class="badge bg-primary">${emp.ma_nhan_vien}</span>
+                                        <div class="small text-muted">${emp.chuc_vu} - ${emp.phong_ban}</div>
+                                    </div>
+                                    <i class="bi bi-chevron-right text-muted"></i>
+                                </div>
+                            </a>
+                        `;
+                    });
+                    suggestionBox.html(html).show();
+                } else {
+                    suggestionBox.html('<div class="list-group-item text-muted text-center fst-italic">Không tìm thấy nhân viên.</div>').show();
+                }
+            }
+        });
+    });
+
+    // Khi chọn nhân viên
+    $(document).on('click', '.suggestion-item', function() {
+        var emp = $(this).data();
+        $('#id_ma_nhan_vien').val(emp.ma);
+        $('#id_nguoi_muon').val(emp.ten);
+        $('#id_email').val(emp.email);
+        $('#id_chuc_vu').val(emp.cv);
+        $('#id_phong_ban').val(emp.pb);
+        $('#id_ma_nhan_vien').addClass('is-valid');
+        suggestionBox.hide();
+    });
+
+    // Ẩn khi click ra ngoài
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('#id_ma_nhan_vien').length && !$(e.target).closest('#suggestion-box').length) {
+            suggestionBox.hide();
+        }
+    });
+
+    // =========================================================
+    // 2. LOGIC TÌNH TRẠNG (ẨN/HIỆN Ô NHẬP "KHÁC")
+    // =========================================================
+    $(document).on('change', '.condition-select', function() {
+        var selectedValue = $(this).val();
+        var otherInputDiv = $(this).siblings('.condition-other-wrapper');
+        
+        if (selectedValue === 'khac') {
+            otherInputDiv.removeClass('d-none');
+            otherInputDiv.find('input').focus();
+        } else {
+            otherInputDiv.addClass('d-none');
+            otherInputDiv.find('input').val('');
+        }
+    });
+    // Kích hoạt ngay khi load trang (để xử lý dữ liệu cũ nếu có)
+    $('.condition-select').trigger('change');
+
+    // =========================================================
+    // 3. LOGIC FORMSET (THÊM/XÓA DÒNG BẢNG)
+    // =========================================================
+    function updateRowIndices() {
+        $('#items-table .item-row:visible').each(function(index) {
+            $(this).find('.row-index').text(index + 1);
+        });
+    }
+
+    $('#add-row').click(function() {
+        var totalForms = $('#id_items-TOTAL_FORMS');
+        var formIdx = parseInt(totalForms.val());
+        
+        // Lấy nội dung từ template ẩn
+        var newRowHtml = $('#empty-form-template').html().replace(/__prefix__/g, formIdx);
+        
+        $('#form-body').append(newRowHtml);
+        totalForms.val(formIdx + 1);
+        updateRowIndices();
+        
+        // Kích hoạt lại sự kiện change cho dòng mới thêm
+        $('.condition-select').trigger('change');
+    });
+
+    $(document).on('click', '.delete-row', function() {
+        var row = $(this).closest('tr');
+        if (row.find('input[name$="-id"]').val()) {
+            // Dòng cũ -> Ẩn và tick Delete
+            row.find('input[name$="-DELETE"]').prop('checked', true);
+            row.hide();
+        } else {
+            // Dòng mới -> Xóa hẳn
+            row.remove();
+        }
+        updateRowIndices();
+    });
+
+    // =========================================================
+    // 4. LOGIC ẢNH NÂNG CAO (KÉO THẢ & XÓA TỪNG ẢNH)
+    // =========================================================
+    const dt = new DataTransfer(); // Bộ nhớ đệm chứa file
+    const input = document.getElementById('id_photos');
+    const dropZone = $('#drop-zone');
+
+    // Click nút chọn
+    $('#btn-select').on('click', function(e) {
+        e.stopPropagation();
+        $('#id_photos').click();
+    });
+
+    // Click vùng trống
+    dropZone.on('click', function(e) {
+        if ($(e.target).is('#id_photos')) return;
+        $('#id_photos').click();
+    });
+
+    // Kéo thả hiệu ứng
+    dropZone.on('dragover', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        $(this).addClass('drag-over');
+    });
+    dropZone.on('dragleave drop', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        $(this).removeClass('drag-over');
+    });
+
+    // Sự kiện Thả file
+    dropZone.on('drop', function(e) {
+        const files = e.originalEvent.dataTransfer.files;
+        handleFiles(files);
+    });
+
+    // Sự kiện Chọn file từ hộp thoại
+    $('#id_photos').on('change', function() {
+        handleFiles(this.files);
+    });
+
+    function handleFiles(files) {
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            if (file.type.startsWith('image/')) {
+                dt.items.add(file); // Thêm vào bộ nhớ đệm
+            }
+        }
+        input.files = dt.files; // Cập nhật input gốc
+        renderPreview();
+    }
+
+    function renderPreview() {
+        $('#new-images-preview').html('');
+        Array.from(dt.files).forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const html = `
+                    <div class="col-auto fade-in">
+                        <div class="position-relative border rounded p-1 bg-white shadow-sm" style="width: 100px; height: 100px;">
+                            <img src="${e.target.result}" class="w-100 h-100 object-fit-cover rounded">
+                            <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 p-0 d-flex align-items-center justify-content-center rounded-circle btn-remove-img" 
+                                    data-index="${index}" 
+                                    style="width: 20px; height: 20px; transform: translate(30%, -30%); box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                                <i class="bi bi-x small"></i>
+                            </button>
+                        </div>
+                    </div>`;
+                $('#new-images-preview').append(html);
+            }
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // Xóa ảnh trong danh sách chờ
+    $(document).on('click', '.btn-remove-img', function(e) {
+        e.stopPropagation();
+        const indexToRemove = $(this).data('index');
+        
+        const newDt = new DataTransfer();
+        Array.from(dt.files).forEach((file, index) => {
+            if (index !== indexToRemove) newDt.items.add(file);
+        });
+        
+        dt.items.clear();
+        Array.from(newDt.files).forEach(file => dt.items.add(file));
+        input.files = dt.files;
+        
+        renderPreview();
+    });
+    // ==============================================
+    // LOGIC EXCEL DROPZONE (MÀU XANH LÁ)
+    // ==============================================
+    
+    const excelInput = document.getElementById('id_excel_file'); // ID mặc định của Django
+    const excelZone = $('#excel-drop-zone');
+    const excelNameDisplay = $('#excel-file-name');
+
+    // 1. Click nút chọn
+    $('#btn-select-excel').on('click', function(e) {
+        e.stopPropagation();
+        $(excelInput).click();
+    });
+
+    // 2. Click vùng trống
+    excelZone.on('click', function(e) {
+        if ($(e.target).is(excelInput)) return;
+        $(excelInput).click();
+    });
+
+    // 3. Hiệu ứng Kéo thả
+    excelZone.on('dragover', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        $(this).addClass('drag-over-excel');
+    });
+    excelZone.on('dragleave drop', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        $(this).removeClass('drag-over-excel');
+    });
+
+    // 4. Thả file
+    excelZone.on('drop', function(e) {
+        const files = e.originalEvent.dataTransfer.files;
+        if (files.length > 0) {
+            handleExcelFile(files[0]);
+        }
+    });
+
+    // 5. Chọn từ hộp thoại
+    $(excelInput).on('change', function() {
+        if (this.files.length > 0) {
+            handleExcelFile(this.files[0]);
+        }
+    });
+
+    // Hàm xử lý hiển thị tên file
+    function handleExcelFile(file) {
+        // Kiểm tra đuôi file (cơ bản)
+        if (!file.name.match(/\.(xls|xlsx)$/)) {
+            alert("Vui lòng chỉ chọn file Excel (.xls, .xlsx)");
+            return;
+        }
+
+        // Gán file vào input (để gửi lên server)
+        // Lưu ý: Input file đơn không hỗ trợ gán trực tiếp từ DataTransfer trong một số trình duyệt cũ,
+        // nhưng với Drop thì cần gán lại.
+        const dtExcel = new DataTransfer();
+        dtExcel.items.add(file);
+        excelInput.files = dtExcel.files;
+
+        // Hiển thị tên file
+        excelNameDisplay.html(`<i class="bi bi-check-circle-fill"></i> Đã chọn: ${file.name}`);
+    }
+});
+</script>
+{% endblock %}

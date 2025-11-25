@@ -1,0 +1,26 @@
+# Bỏ qua môi trường ảo
+venv/
+.venv/
+env/
+
+# Bỏ qua các file môi trường chứa mật khẩu (QUAN TRỌNG)
+.env
+*.env
+
+# Bỏ qua Database local
+db.sqlite3
+*.sqlite3
+
+# Bỏ qua file biên dịch Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Bỏ qua file tĩnh và media (được sinh ra hoặc do user up)
+staticfiles/
+media/
+
+# Bỏ qua file cấu hình IDE (VS Code, PyCharm...)
+.idea/
+.vscode/
+.DS_Store

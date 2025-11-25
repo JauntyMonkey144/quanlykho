@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% load auth_extras %}
+
+{% block title %}Chi tiết Phiếu #{{ loan.id }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="mb-3">
+            <a href="{% url 'loan_list' %}" class="text-decoration-none text-muted">
+                <i class="bi bi-arrow-left"></i> Quay lại danh sách
+            </a>
+        </div>
+
+        <div class="card mb-4 border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="fw-bold text-{{ loan.status_color }} mb-3">
+                    TRẠNG THÁI: {{ loan.get_status_display|upper }}
+                </h5>
+                
+                <div class="d-flex gap-2 flex-wrap">
+                    {% if loan.status == 'draft' or loan.status == 'rejected' %}
+                        {% if user == loan.created_by or user.is_superuser %}
+                            <a href="{% url 'loan_action' loan.id 'send' %}" class="btn btn-primary">
+                                <i class="bi bi-send"></i> Gửi duyệt
+                            </a>
+                            <a href="{% url 'edit_loan' loan.id %}" class="btn btn-warning text-dark fw-bold">
+                                <i class="bi bi-pencil"></i> Sửa phiếu
+                            </a>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if loan.status == 'dept_pending' %}
+                        {% if request.user|has_group:"TruongPhong" or user.is_superuser %}
+                            <a href="{% url 'loan_action' loan.id 'dept_approve' %}" class="btn btn-info text-white fw-bold">
+                                <i class="bi bi-check-circle"></i> Trưởng phòng duyệt
+                            </a>
+                            <a href="{% url 'loan_action' loan.id 'reject' %}" class="btn btn-outline-danger">Từ chối</a>
+                        {% else %}
+                            <span class="badge bg-secondary p-2 align-self-center">Chờ Trưởng phòng duyệt</span>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if loan.status == 'director_pending' %}
+                        {% if request.user|has_group:"GiamDoc" or user.is_superuser %}
+                            <a href="{% url 'loan_action' loan.id 'director_approve' %}" class="btn btn-primary fw-bold">
+                                <i class="bi bi-check-circle-fill"></i> Giám đốc duyệt
+                            </a>
+                            <a href="{% url 'loan_action' loan.id 'reject' %}" class="btn btn-outline-danger">Từ chối</a>
+                        {% else %}
+                            <span class="badge bg-secondary p-2 align-self-center">Chờ Giám đốc duyệt</span>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if loan.status == 'warehouse_pending' %}
+                        {% if request.user|has_group:"ThuKho" or user.is_superuser %}
+                            <a href="{% url 'loan_action' loan.id 'warehouse_export' %}" class="btn btn-warning fw-bold">
+                                <i class="bi bi-box-seam"></i> Xuất Kho
+                            </a>
+                        {% else %}
+                            <span class="badge bg-secondary p-2 align-self-center">Chờ Kho xuất</span>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if loan.status == 'returning' %}
+                        {% if request.user|has_group:"ThuKho" or user.is_superuser %}
+                            <a href="{% url 'loan_action' loan.id 'warehouse_confirm' %}" class="btn btn-success fw-bold">
+                                <i class="bi bi-check-all"></i> Xác nhận Đã Nhận
+                            </a>
+                        {% else %}
+                            <span class="badge bg-secondary p-2 align-self-center">Chờ Kho kiểm tra</span>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if loan.status == 'borrowing' %}
+                        {% if user == loan.created_by or request.user|has_group:"ThuKho" or user.is_superuser %}
+                            <a href="{% url 'return_loan' loan.id %}" class="btn btn-danger text-white fw-bold">
+                                <i class="bi bi-arrow-return-left"></i> Yêu cầu Trả Hàng
+                            </a>
+                        {% endif %}
+                    {% endif %}
+                    
+                    <a href="{% url 'export_loan_pdf' loan.id %}" class="btn btn-dark ms-auto" target="_blank">
+                        <i class="bi bi-printer"></i> In PDF
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-light fw-bold">I. THÔNG TIN CHUNG</div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4"><strong>Người mượn:</strong> {{ loan.nguoi_muon }}</div>
+                    <div class="col-md-4"><strong>Mã NV:</strong> {{ loan.ma_nhan_vien }}</div>
+                    <div class="col-md-4"><strong>Phòng ban:</strong> {{ loan.phong_ban }}</div>
+                    <div class="col-md-12 mt-2"><strong>Lý do:</strong> {{ loan.ly_do }}</div>
+                    <div class="col-md-12 mt-2"><strong>Ghi chú chung:</strong> {{ loan.ghi_chu|default:"--" }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-light fw-bold">II. DANH SÁCH VẬT TƯ</div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-bordered mb-0 align-middle text-nowrap">
+                        <thead class="bg-light text-center">
+                            <tr>
+                                <th>STT</th>
+                                <th>Tên tài sản</th>
+                                <th>ĐVT</th>
+                                <th>SL</th>
+                                <th>Ngày mượn</th>
+                                <th>Ngày trả DK</th>
+                                <th>Tình trạng</th>
+                                <th>Ghi chú</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in loan.items.all %}
+                            <tr>
+                                <td class="text-center fw-bold">{{ forloop.counter }}</td>
+                                <td>{{ item.ten_tai_san }}</td>
+                                <td class="text-center">{{ item.don_vi_tinh }}</td>
+                                <td class="text-center">{{ item.so_luong }}</td>
+                                <td class="text-center">{{ item.ngay_muon|date:"d/m/Y" }}</td>
+                                <td class="text-center">{{ item.ngay_tra_du_kien|date:"d/m/Y" }}</td>
+                                
+                                <td class="text-center">
+                                    {% if item.tinh_trang == 'khac' %}
+                                        {{ item.tinh_trang_khac }} {% else %}
+                                        {{ item.get_tinh_trang_display }} {% endif %}
+                                </td>
+                                
+                                <td>{{ item.ghi_chu|default:"" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        {% if loan.images.all %}
+        <div class="card mt-4 shadow-sm">
+            <div class="card-header bg-light fw-bold">HÌNH ẢNH ĐÍNH KÈM</div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-3">
+                    {% for img in loan.images.all %}
+                    <div class="border rounded p-2 text-center bg-white">
+                        <img src="{{ img.image.url }}" style="height: 150px; width: auto; object-fit: contain;" class="rounded">
+                        
+                        <div class="mt-2">
+                            {% if img.image_type == 'borrow' %}
+                                <span class="badge bg-primary">Ảnh mượn</span>
+                            {% else %}
+                                <span class="badge bg-danger">Ảnh trả</span>
+                            {% endif %}
+                        </div>
+                        <div class="small text-muted mt-1">{{ img.uploaded_at|date:"d/m H:i" }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

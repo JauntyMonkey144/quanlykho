@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Hệ Thống Kho{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <style>
+        body { background-color: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .card { border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: none; }
+        .navbar { box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
+        /* CSS cho vùng Upload */
+    .upload-area {
+        border: 2px dashed #cbd5e1; /* Viền nét đứt màu xám nhạt */
+        border-radius: 12px;
+        background-color: #fff;
+        padding: 2rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease; /* Hiệu ứng chuyển động mượt */
+        position: relative;
+    }
+
+    /* Hiệu ứng khi rê chuột vào */
+    .upload-area:hover {
+        border-color: #3b82f6; /* Đổi màu viền thành xanh dương */
+        background-color: #f8fafc;
+    }
+
+    /* HIỆU ỨNG KHI KÉO FILE VÀO (Class này sẽ được JS thêm vào) */
+    .upload-area.drag-over {
+        border-style: solid;       /* Chuyển thành viền liền */
+        border-color: #10b981;     /* Màu xanh lá */
+        background-color: #ecfdf5; /* Nền xanh lá nhạt */
+        transform: scale(1.02);    /* Phóng to nhẹ 1 chút */
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+
+    /* CSS cho nút bấm bên trong để nó không chặn sự kiện click của cha */
+    .upload-content {
+        pointer-events: auto; /* Quan trọng: Để click vào nút cũng như click vào khung */
+    }
+
+    /* Style riêng cho Excel Dropzone */
+    .excel-upload-area {
+        border: 2px dashed #a3cfbb; /* Viền xanh lá nhạt */
+        border-radius: 12px;
+        background-color: #fff;
+        padding: 2rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+
+    .excel-upload-area:hover {
+        border-color: #198754; /* Xanh lá đậm khi hover */
+        background-color: #f8fffb;
+    }
+
+    /* Hiệu ứng khi kéo file vào */
+    .excel-upload-area.drag-over-excel {
+        border-style: solid;
+        border-color: #198754;
+        background-color: #d1e7dd; /* Nền xanh lá */
+        transform: scale(1.02);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="/"><i class="bi bi-box-seam"></i> SUN AUTOMATION</a>
+            
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav me-auto">
+                </ul>
+                
+                <div class="d-flex text-white">
+                    {% if user.is_authenticated %}
+                        <div class="dropdown">
+                            <button class="btn btn-light btn-sm dropdown-toggle text-primary fw-bold" type="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-person-circle"></i> {{ user.username }}
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li>
+                                    <form action="{% url 'logout' %}" method="post">
+                                        {% csrf_token %}
+                                        <button class="dropdown-item text-danger" type="submit">Đăng xuất</button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+                    {% else %}
+                        <a href="{% url 'login' %}" class="btn btn-light btn-sm me-2">Đăng nhập</a>
+                        <a href="{% url 'register' %}" class="btn btn-outline-light btn-sm">Đăng ký</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mb-5">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

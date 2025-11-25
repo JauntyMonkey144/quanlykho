@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Đăng nhập{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5">
+        <div class="card p-4">
+            <h3 class="text-center text-primary mb-4 fw-bold">ĐĂNG NHẬP</h3>
+            <form method="post">
+                {% csrf_token %}
+                {{ form|crispy }}
+                <button type="submit" class="btn btn-primary w-100 mt-3 py-2 fw-bold">Đăng nhập</button>
+            </form>
+            <div class="text-center mt-3">
+                <p>Chưa có tài khoản? <a href="{% url 'register' %}" class="fw-bold">Đăng ký ngay</a></p>
+                <p><a href="{% url 'password_reset' %}" class="text-muted small">Quên mật khẩu?</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
