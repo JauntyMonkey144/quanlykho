@@ -30,3 +30,4 @@ weasyprint
 webencodings
 whitenoise
 zopfli
+resend
