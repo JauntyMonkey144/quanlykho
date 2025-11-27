@@ -91,7 +91,7 @@
             <div class="card-header bg-light fw-bold">I. THÔNG TIN CHUNG</div>
             <div class="card-body">
                 <div class="row">
-                    <div class="col-md-4"><strong>Số phiếu:</strong> #{{ loan.id|stringformat:"04d" }}</div>
+                    <div class="col-md-4"><strong>Số phiếu:</strong> {{ loan.nguoi_muon }}</div>
                     <div class="col-md-4"><strong>Người mượn:</strong> {{ loan.nguoi_muon }}</div>
                     <div class="col-md-4"><strong>Mã NV:</strong> {{ loan.ma_nhan_vien }}</div>
                     <div class="col-md-4"><strong>Phòng ban:</strong> {{ loan.phong_ban }}</div>
@@ -166,6 +166,74 @@
             </div>
         </div>
         {% endif %}
+    </div>
+    <div class="card mb-4 border-0 shadow-sm">
+    <div class="card-header bg-light fw-bold"><i class="bi bi-clock-history"></i> NHẬT KÝ HOẠT ĐỘNG</div>
+    <div class="card-body">
+        <ul class="timeline">
+            
+            <li class="timeline-item">
+                <strong class="text-success">Tạo mới</strong>
+                <span class="float-end text-muted small">{{ loan.ngay_tao|date:"H:i d/m/Y" }}</span>
+                <p class="mb-0 small">Người tạo: {{ loan.created_by.last_name }} {{ loan.created_by.first_name }}</p>
+            </li>
+
+            {% if loan.ngay_gui %}
+            <li class="timeline-item">
+                <strong class="text-primary">Gửi duyệt</strong>
+                <span class="float-end text-muted small">{{ loan.ngay_gui|date:"H:i d/m/Y" }}</span>
+                <p class="mb-0 small">Đã gửi lên Trưởng phòng</p>
+            </li>
+            {% endif %}
+
+            {% if loan.ngay_truong_phong_duyet %}
+            <li class="timeline-item">
+                <strong class="text-info">Trưởng phòng Duyệt</strong>
+                <span class="float-end text-muted small">{{ loan.ngay_truong_phong_duyet|date:"H:i d/m/Y" }}</span>
+                <p class="mb-0 small">Người duyệt: {{ loan.user_truong_phong.last_name }} {{ loan.user_truong_phong.first_name }}</p>
+            </li>
+            {% endif %}
+
+            {% if loan.ngay_giam_doc_duyet %}
+            <li class="timeline-item">
+                <strong class="text-primary">Giám đốc Duyệt</strong>
+                <span class="float-end text-muted small">{{ loan.ngay_giam_doc_duyet|date:"H:i d/m/Y" }}</span>
+                <p class="mb-0 small">Người duyệt: {{ loan.user_giam_doc.last_name }} {{ loan.user_giam_doc.first_name }}</p>
+            </li>
+            {% endif %}
+
+            {% if loan.ngay_kho_xac_nhan_muon %}
+            <li class="timeline-item">
+                <strong class="text-warning">Xuất kho</strong>
+                <span class="float-end text-muted small">{{ loan.ngay_kho_xac_nhan_muon|date:"H:i d/m/Y" }}</span>
+                <p class="mb-0 small">Thủ kho: {{ loan.user_thu_kho_xuat.last_name }} {{ loan.user_thu_kho_xuat.first_name }}</p>
+            </li>
+            {% endif %}
+
+            {% if loan.ngay_tra_thuc_te %}
+            <li class="timeline-item">
+                <strong class="text-danger">Yêu cầu trả hàng</strong>
+                <span class="float-end text-muted small">{{ loan.ngay_tra_thuc_te|date:"H:i d/m/Y" }}</span>
+                <p class="mb-0 small">Người trả: {{ loan.user_nguoi_tra.last_name }} {{ loan.user_nguoi_tra.first_name }}</p>
+            </li>
+            {% endif %}
+
+            {% if loan.ngay_kho_xac_nhan_tra %}
+            <li class="timeline-item">
+                <strong class="text-success">Hoàn tất nhập kho</strong>
+                <span class="float-end text-muted small">{{ loan.ngay_kho_xac_nhan_tra|date:"H:i d/m/Y" }}</span>
+                <p class="mb-0 small">Thủ kho: {{ loan.user_thu_kho_nhap.last_name }} {{ loan.user_thu_kho_nhap.first_name }}</p>
+            </li>
+            {% endif %}
+
+            {% if loan.ngay_tu_choi %}
+            <li class="timeline-item bg-danger bg-opacity-10 rounded p-2">
+                <strong class="text-danger">Đã từ chối</strong>
+                <span class="float-end text-muted small">{{ loan.ngay_tu_choi|date:"H:i d/m/Y" }}</span>
+            </li>
+            {% endif %}
+        </ul>
+    </div>
     </div>
 </div>
 {% endblock %}
