@@ -48,7 +48,7 @@ def send_loan_email(request, loan, subject, message, recipients):
         return False
 
     params = {
-        "from": "system@sunautomation.id.vn", # Bắt buộc dùng mail này nếu chưa add domain
+        "from": "system@sun-automation.id.vn", # Bắt buộc dùng mail này nếu chưa add domain
         "to": recipients,
         "subject": subject,
         "html": html_content,
