@@ -115,8 +115,20 @@
         
         .sign-title { font-weight: bold; text-transform: uppercase; font-size: 9pt; margin-bottom: 2px; }
         .sign-note { font-style: italic; font-size: 8pt; margin-top: 0; }
-        .sign-space { height: 70px; vertical-align: bottom !important; }
-        
+        /* Tăng chiều cao khoảng trống ký thêm một chút */
+            .sign-space { 
+                height: 90px; /* Tăng từ 70px/80px lên 90px */
+                vertical-align: bottom !important; 
+                padding-bottom: 5px;
+            }
+            
+            /* Class mới cho ngày ký */
+            .sign-date {
+                font-size: 9pt;
+                font-style: italic;
+                color: #333;
+                margin-bottom: 4px; /* Khoảng cách với tên người ký */
+            }
         .section-divider { border-top: 1px dashed #999; margin: 20px 0; padding-top: 10px; }
         .return-header { font-weight: bold; text-transform: uppercase; margin-bottom: 10px; font-size: 11pt; text-decoration: underline; }
     </style>
@@ -199,45 +211,55 @@
         </div>
 
         <table class="sign-table">
-            <tr>
-                <td width="25%">
-                    <div class="sign-title">BAN GIÁM ĐỐC</div>
-                    <div class="sign-note">(Ký, ghi rõ họ tên)</div>
-                </td>
-                <td width="25%">
-                    <div class="sign-title">PHỤ TRÁCH KHO</div>
-                    <div class="sign-note">(Ký, ghi rõ họ tên)</div>
-                </td>
-                <td width="25%">
-                    <div class="sign-title">TRƯỞNG PHÒNG</div>
-                    <div class="sign-note">(Ký, ghi rõ họ tên)</div>
-                </td>
-                <td width="25%">
-                    <div class="sign-title">NGƯỜI ĐỀ XUẤT</div>
-                    <div class="sign-note">(Ký, ghi rõ họ tên)</div>
-                </td>
-            </tr>
-            
-            <tr>
-                <td class="sign-space">
-                    {% if loan.user_giam_doc %}
-                        <strong>{{ loan.user_giam_doc.last_name }} {{ loan.user_giam_doc.first_name }}</strong>
-                    {% endif %}
-                </td>
-                <td class="sign-space">
-                    {% if loan.user_thu_kho_xuat %}
-                        <strong>{{ loan.user_thu_kho_xuat.last_name }} {{ loan.user_thu_kho_xuat.first_name }}</strong>
-                    {% endif %}
-                </td>
-                <td class="sign-space">
-                    {% if loan.user_truong_phong %}
-                        <strong>{{ loan.user_truong_phong.last_name }} {{ loan.user_truong_phong.first_name }}</strong>
-                    {% endif %}
-                </td>
-                <td class="sign-space">
-                    <strong>{{ loan.nguoi_muon }}</strong>
-                </td>
-            </tr>
+            <thead>
+                <tr>
+                    <td width="25%">
+                        <div class="sign-title">BAN GIÁM ĐỐC</div>
+                        <div class="sign-note">(Ký, ghi rõ họ tên)</div>
+                    </td>
+                    <td width="25%">
+                        <div class="sign-title">PHỤ TRÁCH KHO</div>
+                        <div class="sign-note">(Ký, ghi rõ họ tên)</div>
+                    </td>
+                    <td width="25%">
+                        <div class="sign-title">TRƯỞNG PHÒNG</div>
+                        <div class="sign-note">(Ký, ghi rõ họ tên)</div>
+                    </td>
+                    <td width="25%">
+                        <div class="sign-title">NGƯỜI ĐỀ XUẤT</div>
+                        <div class="sign-note">(Ký, ghi rõ họ tên)</div>
+                    </td>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="sign-space">
+                        {% if loan.user_giam_doc %}
+                            <div class="sign-date">Ngày: {{ loan.ngay_giam_doc_duyet|date:"d/m/Y" }}</div>
+                            <strong>{{ loan.user_giam_doc.last_name }} {{ loan.user_giam_doc.first_name }}</strong>
+                        {% endif %}
+                    </td>
+                    
+                    <td class="sign-space">
+                        {% if loan.user_thu_kho_xuat %}
+                            <div class="sign-date">Ngày: {{ loan.ngay_kho_xac_nhan_muon|date:"d/m/Y" }}</div>
+                            <strong>{{ loan.user_thu_kho_xuat.last_name }} {{ loan.user_thu_kho_xuat.first_name }}</strong>
+                        {% endif %}
+                    </td>
+                    
+                    <td class="sign-space">
+                        {% if loan.user_truong_phong %}
+                            <div class="sign-date">Ngày: {{ loan.ngay_truong_phong_duyet|date:"d/m/Y" }}</div>
+                            <strong>{{ loan.user_truong_phong.last_name }} {{ loan.user_truong_phong.first_name }}</strong>
+                        {% endif %}
+                    </td>
+                    
+                    <td class="sign-space">
+                        <div class="sign-date">Ngày: {{ loan.ngay_tao|date:"d/m/Y" }}</div>
+                        <strong>{{ loan.nguoi_muon }}</strong>
+                    </td>
+                </tr>
+            </tbody>
         </table>
     </div>
 
@@ -246,35 +268,30 @@
     <div class="footer-section">
         <div class="return-header">PHẦN XÁC NHẬN TRẢ HÀNG</div>
         
-        <div style="text-align: right; margin-bottom: 10px; font-style: italic;">
-            {% if loan.ngay_tra_thuc_te %}
-                Ngày trả: {{ loan.ngay_tra_thuc_te|date:"d/m/Y" }}
-            {% else %}
-                Ngày trả: ....../....../..........
-            {% endif %}
-        </div>
-
         <table class="sign-table">
             <tr>
                 <td width="50%"></td> 
                 <td width="25%">
                     <div class="sign-title">PHỤ TRÁCH KHO</div>
-                    <div class="sign-note">(Ký, ghi rõ họ tên)</div>
+                    <div class="sign-note">(Nhập lại kho)</div>
                 </td>
                 <td width="25%">
                     <div class="sign-title">NGƯỜI TRẢ HÀNG</div>
                     <div class="sign-note">(Ký, ghi rõ họ tên)</div>
                 </td>
             </tr>
-            
             <tr>
                 <td></td>
+                
                 <td class="sign-space">
                     {% if loan.user_thu_kho_nhap %}
+                        <div class="sign-date">Ngày: {{ loan.ngay_kho_xac_nhan_tra|date:"d/m/Y" }}</div>
                         <strong>{{ loan.user_thu_kho_nhap.last_name }} {{ loan.user_thu_kho_nhap.first_name }}</strong>
                     {% endif %}
                 </td>
+                
                 <td class="sign-space">
+                    <div class="sign-date">Ngày: {{ loan.ngay_tra_thuc_te|date:"d/m/Y" }}</div>
                     {% if loan.user_nguoi_tra %}
                         <strong>{{ loan.user_nguoi_tra.last_name }} {{ loan.user_nguoi_tra.first_name }}</strong>
                     {% else %}
