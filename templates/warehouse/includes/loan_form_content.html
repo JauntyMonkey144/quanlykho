@@ -1,3 +1,4 @@
+{% load static %}
 {% load crispy_forms_tags %}
 
 <div class="card mb-4 shadow-sm border-0">
@@ -43,6 +44,9 @@
         <div class="col-md-6 border-end">
             <label class="fw-bold text-success mb-2"><i class="bi bi-file-earmark-excel"></i> Import từ Excel</label>
             
+            <a href="{% static 'excel/template.xlsx' %}" class="badge bg-success text-decoration-none shadow-sm" download>
+                <i class="bi bi-download"></i> Tải file mẫu
+            </a>
             <div id="excel-drop-zone" class="excel-upload-area">
                 <div class="upload-content">
                     <i class="bi bi-file-earmark-spreadsheet-fill text-success display-4"></i>
