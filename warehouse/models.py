@@ -43,6 +43,14 @@ class LoanSlip(models.Model):
     user_thu_kho_xuat = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='duyet_kho_xuat')
     user_thu_kho_nhap = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='duyet_kho_nhap')
     user_nguoi_tra = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='nguoi_tra')
+        # --- THÊM CÁC TRƯỜNG THỜI GIAN (LOGGING) ---
+    ngay_gui = models.DateTimeField("Ngày gửi duyệt", null=True, blank=True)
+    ngay_truong_phong_duyet = models.DateTimeField("Ngày TP duyệt", null=True, blank=True)
+    ngay_giam_doc_duyet = models.DateTimeField("Ngày GĐ duyệt", null=True, blank=True)
+    ngay_kho_xac_nhan_muon = models.DateTimeField("Ngày xuất kho", null=True, blank=True)
+    # ngay_tra_thuc_te đã có rồi
+    ngay_kho_xac_nhan_tra = models.DateTimeField("Ngày nhập kho lại", null=True, blank=True)
+    ngay_tu_choi = models.DateTimeField("Ngày từ chối", null=True, blank=True)
     def __str__(self):
         return f"Phiếu mượn #{self.id} - {self.nguoi_muon}"
 # Hàm hỗ trợ hiển thị màu sắc trạng thái trên giao diện
