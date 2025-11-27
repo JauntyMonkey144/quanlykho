@@ -314,6 +314,7 @@ def loan_action(request, pk, action):
             return redirect('loan_detail', pk=pk)
             
         loan.status = 'dept_pending'
+        loan.ngay_gui = timezone.now()  # <--- Thêm dòng này
         recipients = truong_phong_emails
         msg = f"Nhân viên {loan.nguoi_muon} vừa gửi phiếu mượn #{loan.id}. Vui lòng duyệt."
 
@@ -325,6 +326,7 @@ def loan_action(request, pk, action):
             
         loan.status = 'director_pending'
         loan.user_truong_phong = request.user  # <--- Lưu đúng người duyệt bước này
+        loan.ngay_truong_phong_duyet = timezone.now() # <--- Thêm dòng này
         recipients = giam_doc_emails
         msg = f"Trưởng phòng đã duyệt phiếu #{loan.id}. Xin Giám đốc phê duyệt."
 
@@ -336,6 +338,7 @@ def loan_action(request, pk, action):
             
         loan.status = 'warehouse_pending'
         loan.user_giam_doc = request.user      # <--- Lưu đúng người duyệt bước này
+        loan.ngay_giam_doc_duyet = timezone.now() # <--- Thêm dòng này
         recipients = thu_kho_emails
         msg = f"Giám đốc đã duyệt phiếu #{loan.id}. Vui lòng chuẩn bị xuất kho."
 
@@ -347,6 +350,7 @@ def loan_action(request, pk, action):
             
         loan.status = 'borrowing'
         loan.user_thu_kho_xuat = request.user  # <--- Lưu người xuất kho
+        loan.ngay_kho_xac_nhan_muon = timezone.now() # <--- Thêm dòng này
         recipients = user_email
         msg = f"Phiếu #{loan.id} đã được xuất kho. Bạn đã nhận bàn giao thiết bị."
 
@@ -359,6 +363,7 @@ def loan_action(request, pk, action):
         loan.status = 'returning'
         loan.ngay_tra_thuc_te = timezone.now()
         loan.user_nguoi_tra = request.user     # <--- Lưu người trả hàng
+        loan.ngay_tra_thuc_te = timezone.now() # Dòng này đã có, giữ nguyên
         recipients = thu_kho_emails
         msg = f"Người dùng {loan.nguoi_muon} báo đã trả hàng phiếu #{loan.id}. Vui lòng kiểm tra."
 
@@ -370,6 +375,7 @@ def loan_action(request, pk, action):
             
         loan.status = 'returned'
         loan.user_thu_kho_nhap = request.user  # <--- Lưu người nhận lại hàng (MỚI THÊM)
+        loan.ngay_kho_xac_nhan_tra = timezone.now() # <--- Thêm dòng này
         recipients = user_email
         msg = f"Kho đã nhận lại đầy đủ hàng phiếu #{loan.id}. Quy trình hoàn tất."
 
@@ -384,6 +390,7 @@ def loan_action(request, pk, action):
 
         loan.status = 'rejected'
         recipients = user_email
+        loan.ngay_tu_choi = timezone.now() # <--- Thêm dòng này
         msg = f"Rất tiếc, phiếu #{loan.id} của bạn đã bị từ chối."
 
     # Lưu thay đổi vào Database
