@@ -91,7 +91,7 @@
             <div class="card-header bg-light fw-bold">I. THÔNG TIN CHUNG</div>
             <div class="card-body">
                 <div class="row">
-                    <div class="col-md-4"><strong>Số phiếu:</strong> {{ loan.nguoi_muon }}</div>
+                    <div class="col-md-4"><strong>Số phiếu:</strong> #{{ loan.id|stringformat:"04d" }}</div>
                     <div class="col-md-4"><strong>Người mượn:</strong> {{ loan.nguoi_muon }}</div>
                     <div class="col-md-4"><strong>Mã NV:</strong> {{ loan.ma_nhan_vien }}</div>
                     <div class="col-md-4"><strong>Phòng ban:</strong> {{ loan.phong_ban }}</div>
@@ -108,10 +108,10 @@
                     <table class="table table-bordered mb-0 align-middle text-nowrap">
                         <thead class="bg-light text-center">
                             <tr>
-                                <th>STT</th>
+                                <th>Số thứ tự</th>
                                 <th>Tên tài sản</th>
-                                <th>ĐVT</th>
-                                <th>SL</th>
+                                <th>Đơn vị tính</th>
+                                <th>Số lượng</th>
                                 <th>Ngày mượn</th>
                                 <th>Ngày trả DK</th>
                                 <th>Tình trạng</th>
