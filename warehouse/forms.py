@@ -1,13 +1,10 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from django.contrib.auth.models import User, LoanSlip, LoanItem, Employee
+from django.contrib.auth.models import User
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Submit, Row, Column
 from django.forms import inlineformset_factory
-from .models import LoanItem # Nhớ import thêm LoanItem ở đầu file
-# === QUAN TRỌNG: DÒNG NÀY SỬA LỖI NAME ERROR CỦA BẠN ===
-from .models import LoanSlip 
-
+from .models import LoanSlip, LoanItem, Employee, LoanImage
 # ==========================================
 # 1. WIDGET TÙY CHỈNH (UPLOAD NHIỀU ẢNH)
 # ==========================================
