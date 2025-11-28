@@ -12,7 +12,7 @@ import pandas as pd
 from weasyprint import HTML
 
 # Import Models và Forms
-from .models import LoanSlip, LoanImage, LoanItem, Employee
+from .models import LoanSlip, LoanImage, LoanItem, Employee, LoanHistory
 from .forms import LoanSlipForm, RegistrationForm, LoanItemFormSet, ReturnLoanForm
 from .utils import send_loan_email, get_emails_by_group
 
@@ -302,7 +302,7 @@ def loan_action(request, pk, action):
     def check_perm(group_name):
         # Cho phép nếu user thuộc nhóm HOẶC là Superuser (Admin)
         return user.groups.filter(name=group_name).exists() or user.is_superuser
-
+    history_action = "" # Biến để lưu tên hành động vào lịch sử
     # =======================================================
     # XỬ LÝ LOGIC THEO TỪNG HÀNH ĐỘNG
     # =======================================================
@@ -314,10 +314,10 @@ def loan_action(request, pk, action):
             return redirect('loan_detail', pk=pk)
             
         loan.status = 'dept_pending'
+        history_action = "Gửi duyệt"
         loan.ngay_gui = timezone.now()  # <--- Thêm dòng này
         recipients = truong_phong_emails
         msg = f"Nhân viên {loan.nguoi_muon} vừa gửi phiếu mượn #{loan.id}. Vui lòng duyệt."
-
     # 2. TRƯỞNG PHÒNG DUYỆT (Dept -> Director)
     elif action == 'dept_approve':
         if not check_perm('TruongPhong'):
@@ -326,10 +326,10 @@ def loan_action(request, pk, action):
             
         loan.status = 'director_pending'
         loan.user_truong_phong = request.user  # <--- Lưu đúng người duyệt bước này
+        history_action = "Trưởng phòng Duyệt"
         loan.ngay_truong_phong_duyet = timezone.now() # <--- Thêm dòng này
         recipients = giam_doc_emails
         msg = f"Trưởng phòng đã duyệt phiếu #{loan.id}. Xin Giám đốc phê duyệt."
-
     # 3. GIÁM ĐỐC DUYỆT (Director -> Warehouse)
     elif action == 'director_approve':
         if not check_perm('GiamDoc'):
@@ -338,6 +338,7 @@ def loan_action(request, pk, action):
             
         loan.status = 'warehouse_pending'
         loan.user_giam_doc = request.user      # <--- Lưu đúng người duyệt bước này
+        history_action = "Giám đốc Duyệt"
         loan.ngay_giam_doc_duyet = timezone.now() # <--- Thêm dòng này
         recipients = thu_kho_emails
         msg = f"Giám đốc đã duyệt phiếu #{loan.id}. Vui lòng chuẩn bị xuất kho."
@@ -350,6 +351,7 @@ def loan_action(request, pk, action):
             
         loan.status = 'borrowing'
         loan.user_thu_kho_xuat = request.user  # <--- Lưu người xuất kho
+        history_action = "Kho Xuất hàng"
         loan.ngay_kho_xac_nhan_muon = timezone.now() # <--- Thêm dòng này
         recipients = user_email
         msg = f"Phiếu #{loan.id} đã được xuất kho. Bạn đã nhận bàn giao thiết bị."
@@ -361,8 +363,9 @@ def loan_action(request, pk, action):
              return redirect('loan_detail', pk=pk)
 
         loan.status = 'returning'
-        loan.user_nguoi_tra = request.user     # <--- Lưu người trả hàng
-        loan.ngay_tra_thuc_te = timezone.now() # Dòng này đã có, giữ nguyên
+        loan.ngay_tra_thuc_te = timezone.now() # Gán thời gian hiện tại
+        loan.user_nguoi_tra = user
+        history_action = f"Yêu cầu Trả hàng ({user.username})"
         recipients = thu_kho_emails
         msg = f"Người dùng {loan.nguoi_muon} báo đã trả hàng phiếu #{loan.id}. Vui lòng kiểm tra."
 
@@ -375,9 +378,14 @@ def loan_action(request, pk, action):
         loan.status = 'returned'
         loan.user_thu_kho_nhap = request.user  # <--- Lưu người nhận lại hàng (MỚI THÊM)
         loan.ngay_kho_xac_nhan_tra = timezone.now() # <--- Thêm dòng này
+        # Failsafe: Nếu bước trước chưa lưu ngày, thì lưu ngay bây giờ
+        if not loan.ngay_tra_thuc_te:
+            loan.ngay_tra_thuc_te = timezone.now()
+            
+        history_action = "Kho xác nhận Đã nhận"
         recipients = user_email
         msg = f"Kho đã nhận lại đầy đủ hàng phiếu #{loan.id}. Quy trình hoàn tất."
-
+        
     # 7. TỪ CHỐI (Reject)
     elif action == 'reject':
         if loan.status == 'dept_pending' and not check_perm('TruongPhong'):
@@ -391,10 +399,18 @@ def loan_action(request, pk, action):
         recipients = user_email
         loan.ngay_tu_choi = timezone.now() # <--- Thêm dòng này
         msg = f"Rất tiếc, phiếu #{loan.id} của bạn đã bị từ chối."
-
+        history_action = f"Từ chối ({user.username})"
     # Lưu thay đổi vào Database
     loan.save()
     
+    # --- GHI VÀO BẢNG LỊCH SỬ (SẼ CHẠY DÒNG MỚI MỖI LẦN GHI) ---
+    if history_action:
+        LoanHistory.objects.create(
+            loan=loan,
+            user=user,
+            action=history_action,
+            note=f"Trạng thái chuyển sang: {loan.get_status_display()}"
+        )
     # Gửi Email thông báo (kèm PDF)
     if recipients:
         try:
