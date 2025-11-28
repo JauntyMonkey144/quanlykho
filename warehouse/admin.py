@@ -1,6 +1,7 @@
 from django.contrib import admin
-from .models import Employee, LoanSlip, LoanItem, LoanImage
-
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.models import User
+from .models import UserProfile, Employee, LoanSlip, LoanItem, LoanImage
 # =========================================
 # 1. QUẢN LÝ NHÂN VIÊN
 # =========================================
@@ -13,6 +14,18 @@ class EmployeeAdmin(admin.ModelAdmin):
 # =========================================
 # 2. CẤU HÌNH CHO PHIẾU MƯỢN
 # =========================================
+# 1. Định nghĩa Inline để hiện ô upload chữ ký ngay trong trang User
+class UserProfileInline(admin.StackedInline):
+    model = UserProfile
+    can_delete = False
+    verbose_name_plural = 'Thông tin mở rộng (Chữ ký)'
+
+# 2. Hủy đăng ký User cũ và đăng ký lại với Inline mới
+class UserAdmin(BaseUserAdmin):
+    inlines = (UserProfileInline,)
+
+admin.site.unregister(User)
+admin.site.register(User, UserAdmin)
 
 # Bảng nhập liệu Hàng hóa (Đã thêm ngày mượn/trả)
 class LoanItemInline(admin.TabularInline):
