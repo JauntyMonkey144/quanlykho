@@ -37,7 +37,6 @@ class LoanSlip(models.Model):
     ngay_tao = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    ngay_tra_thuc_te = models.DateTimeField("Ngày trả thực tế", null=True, blank=True)
     user_truong_phong = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='duyet_tp')
     user_giam_doc = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='duyet_gd')
     user_thu_kho_xuat = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='duyet_kho_xuat')
