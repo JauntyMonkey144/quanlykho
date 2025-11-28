@@ -50,6 +50,8 @@ class LoanSlip(models.Model):
     # ngay_tra_thuc_te đã có rồi
     ngay_kho_xac_nhan_tra = models.DateTimeField("Ngày nhập kho lại", null=True, blank=True)
     ngay_tu_choi = models.DateTimeField("Ngày từ chối", null=True, blank=True)
+    ngay_tra_thuc_te = models.DateTimeField("Ngày trả thực tế", null=True, blank=True)
+
     def __str__(self):
         return f"Phiếu mượn #{self.id} - {self.nguoi_muon}"
 # Hàm hỗ trợ hiển thị màu sắc trạng thái trên giao diện
