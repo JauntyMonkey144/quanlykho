@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
+{% load static %}
 
 {% block title %}Sửa Phiếu #{{ loan.id }}{% endblock %}
 
@@ -13,183 +14,134 @@
         </h3>
         <div>
             <a href="{% url 'loan_detail' loan.id %}" class="btn btn-outline-secondary me-2">Hủy bỏ</a>
-            <button type="submit" class="btn btn-primary fw-bold px-4 shadow-sm"><i class="bi bi-save"></i>LƯU THAY ĐỔI </button>
+            <button type="submit" class="btn btn-primary fw-bold px-4 shadow-sm">
+                <i class="bi bi-save"></i> LƯU THAY ĐỔI
+            </button>
         </div>
     </div>
 
-    {% include "warehouse/includes/loan_form_content.html" %} 
-    </form>
+    {% include "warehouse/includes/loan_form_content.html" %}
 
-
+</form>
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 <script>
 $(document).ready(function() {
-// --- 1. LOGIC TỰ ĐỘNG TÌM KIẾM (AUTOCOMPLETE) ---
+
+    // 1. AUTOCOMPLETE NHÂN VIÊN
     var searchInput = $('#id_ma_nhan_vien');
     var suggestionBox = $('#suggestion-box');
 
-    // Khi người dùng gõ phím (dùng 'input' để bắt cả paste)
     searchInput.on('input', function() {
         var query = $(this).val().trim();
-        
-        // Nếu ô trống -> Ẩn gợi ý
-        if (query.length < 1) { 
-            suggestionBox.hide(); 
-            return; 
-        }
+        if (query.length < 1) { suggestionBox.hide(); return; }
 
-        // Gọi API
         $.ajax({
             url: "{% url 'api_get_employee' %}",
             data: { 'query': query },
             success: function(data) {
                 var html = '';
-                
                 if (data.results && data.results.length > 0) {
-                    // Có kết quả -> Tạo danh sách
                     data.results.forEach(function(emp) {
                         html += `
                             <a href="javascript:void(0)" class="list-group-item list-group-item-action suggestion-item"
-                               data-ma="${emp.ma_nhan_vien}"
-                               data-ten="${emp.ho_ten}"
-                               data-email="${emp.email}"
-                               data-cv="${emp.chuc_vu}"
-                               data-pb="${emp.phong_ban}">
+                               data-ma="${emp.ma_nhan_vien}" data-ten="${emp.ho_ten}"
+                               data-email="${emp.email}" data-cv="${emp.chuc_vu}" data-pb="${emp.phong_ban}">
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <strong>${emp.ho_ten}</strong> <span class="badge bg-primary">${emp.ma_nhan_vien}</span>
-                                        <div class="small text-muted">${emp.chuc_vu} - ${emp.phong_ban}</div>
-                                    </div>
+                                    <div><strong>${emp.ho_ten}</strong> <span class="badge bg-primary">${emp.ma_nhan_vien}</span><div class="small text-muted">${emp.chuc_vu}</div></div>
                                     <i class="bi bi-chevron-right text-muted"></i>
                                 </div>
-                            </a>
-                        `;
+                            </a>`;
                     });
+                    suggestionBox.html(html).show();
                 } else {
-                    // Không có kết quả -> Hiện thông báo
-                    html = `<div class="list-group-item text-muted text-center fst-italic">Không tìm thấy nhân viên nào.</div>`;
+                    suggestionBox.html('<div class="list-group-item text-muted text-center">Không tìm thấy.</div>').show();
                 }
-                
-                // Hiển thị box
-                suggestionBox.html(html).show();
             }
         });
     });
 
-    // Khi chọn một dòng trong gợi ý
     $(document).on('click', '.suggestion-item', function() {
-        var emp = $(this).data(); // Lấy dữ liệu đã gán vào thẻ a
-        
-        // Điền vào form
+        var emp = $(this).data();
         $('#id_ma_nhan_vien').val(emp.ma);
         $('#id_nguoi_muon').val(emp.ten);
         $('#id_email').val(emp.email);
         $('#id_chuc_vu').val(emp.cv);
         $('#id_phong_ban').val(emp.pb);
-        
-        // Hiệu ứng xanh
         $('#id_ma_nhan_vien').addClass('is-valid');
-        
-        // Ẩn box gợi ý
         suggestionBox.hide();
     });
 
-    // Ẩn khi click ra ngoài
     $(document).on('click', function(e) {
         if (!$(e.target).closest('#id_ma_nhan_vien').length && !$(e.target).closest('#suggestion-box').length) {
             suggestionBox.hide();
         }
     });
 
+    // 2. TÌNH TRẠNG (ẨN/HIỆN Ô KHÁC)
+    $(document).on('change', '.condition-select', function() {
+        var val = $(this).val();
+        var div = $(this).siblings('.condition-other-wrapper');
+        if (val === 'khac') { div.removeClass('d-none').find('input').focus(); }
+        else { div.addClass('d-none').find('input').val(''); }
+    });
+    // Kích hoạt change event cho các dòng đã có dữ liệu khi load trang sửa
+    $('.condition-select').each(function() {
+        $(this).trigger('change');
+    });
 
+    // 3. FORMSET (THÊM/XÓA DÒNG)
     function updateRowIndices() {
         $('#items-table .item-row:visible').each(function(index) {
             $(this).find('.row-index').text(index + 1);
         });
     }
+    // Cập nhật STT ngay khi load trang
+    updateRowIndices();
 
     $('#add-row').click(function() {
         var totalForms = $('#id_items-TOTAL_FORMS');
         var formIdx = parseInt(totalForms.val());
-        var newRowHtml = $('#empty-form-template').html().replace(/__prefix__/g, formIdx);
-        $('#form-body').append(newRowHtml);
+        var newRow = $('#empty-form-template').html().replace(/__prefix__/g, formIdx);
+        $('#form-body').append(newRow);
         totalForms.val(formIdx + 1);
         updateRowIndices();
+        $('.condition-select').trigger('change'); // Kích hoạt logic ẩn hiện cho dòng mới
     });
 
     $(document).on('click', '.delete-row', function() {
         var row = $(this).closest('tr');
+        // Logic xóa thông minh cho Django Formset
         if (row.find('input[name$="-id"]').val()) {
+            // Dòng cũ -> Ẩn đi và tick vào ô DELETE ẩn
             row.find('input[name$="-DELETE"]').prop('checked', true);
             row.hide();
         } else {
+            // Dòng mới thêm chưa lưu -> Xóa hẳn khỏi DOM
             row.remove();
         }
         updateRowIndices();
     });
-    
-    // Ajax Tìm nhân viên & Preview ảnh (Giữ nguyên như cũ)
 
-    $('#id_photos').change(function() {
-        $('#img-preview').html('');
-        if (this.files) {
-            for (var i = 0; i < this.files.length; i++) {
-                var reader = new FileReader();
-                reader.onload = function(e) {
-                    $('#img-preview').append('<div class="border p-1 rounded bg-white" style="width: 80px; height: 80px;"><img src="'+e.target.result+'" class="w-100 h-100 object-fit-cover rounded"></div>');
-                }
-                reader.readAsDataURL(this.files[i]);
-            }
-        }
-    });
-
-const dt = new DataTransfer();
+    // 4. UPLOAD ẢNH (KÉO THẢ & XÓA)
+    const dt = new DataTransfer();
     const input = document.getElementById('id_photos');
     const dropZone = $('#drop-zone');
 
-    // 1. Click vào vùng Dropzone -> Mở hộp thoại chọn file
-    dropZone.on('click', function() {
-        $('#id_photos').click();
-    });
+    $('#btn-select').on('click', function(e) { e.stopPropagation(); $('#id_photos').click(); });
+    dropZone.on('click', function(e) { if (!$(e.target).is('#id_photos')) $('#id_photos').click(); });
+    
+    dropZone.on('dragover', function(e) { e.preventDefault(); e.stopPropagation(); $(this).addClass('drag-over'); });
+    dropZone.on('dragleave drop', function(e) { e.preventDefault(); e.stopPropagation(); $(this).removeClass('drag-over'); });
+    
+    dropZone.on('drop', function(e) { handleFiles(e.originalEvent.dataTransfer.files); });
+    $('#id_photos').on('change', function() { handleFiles(this.files); });
 
-    // 2. Xử lý sự kiện Kéo vào (Drag Over) -> HIỆN HIỆU ỨNG
-    dropZone.on('dragover', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        $(this).addClass('drag-over'); // Thêm class kích hoạt CSS xanh lá
-    });
-
-    // 3. Xử lý sự kiện Kéo ra (Drag Leave) -> TẮT HIỆU ỨNG
-    dropZone.on('dragleave', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        $(this).removeClass('drag-over'); // Xóa class
-    });
-
-    // 4. Xử lý sự kiện Thả (Drop) -> TẮT HIỆU ỨNG & XỬ LÝ FILE
-    dropZone.on('drop', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        $(this).removeClass('drag-over'); // Xóa class
-
-        // Lấy file
-        const files = e.originalEvent.dataTransfer.files;
-        handleFiles(files);
-    });
-
-    // 5. Xử lý khi chọn từ hộp thoại (Input Change)
-    $('#id_photos').on('change', function() {
-        handleFiles(this.files);
-    });
-
-    // --- HÀM XỬ LÝ FILE & PREVIEW (GIỮ NGUYÊN NHƯ CŨ) ---
     function handleFiles(files) {
         for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            if (!file.type.startsWith('image/')) continue;
-            dt.items.add(file);
+            if (files[i].type.startsWith('image/')) dt.items.add(files[i]);
         }
         input.files = dt.files;
         renderPreview();
@@ -200,101 +152,85 @@ const dt = new DataTransfer();
         Array.from(dt.files).forEach((file, index) => {
             const reader = new FileReader();
             reader.onload = function(e) {
-                const html = `
+                $('#new-images-preview').append(`
                     <div class="col-auto fade-in">
                         <div class="position-relative border rounded p-1 bg-white shadow-sm" style="width: 100px; height: 100px;">
                             <img src="${e.target.result}" class="w-100 h-100 object-fit-cover rounded">
-                            <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 p-0 d-flex align-items-center justify-content-center rounded-circle btn-remove-img" 
-                                    data-index="${index}" 
-                                    style="width: 20px; height: 20px; transform: translate(30%, -30%); box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                                <i class="bi bi-x small"></i>
-                            </button>
+                            <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 p-0 d-flex align-items-center justify-content-center rounded-circle btn-remove-img" data-index="${index}" style="width: 20px; height: 20px; transform: translate(30%, -30%);"><i class="bi bi-x small"></i></button>
                         </div>
-                    </div>
-                `;
-                $('#new-images-preview').append(html);
+                    </div>`);
             }
             reader.readAsDataURL(file);
         });
     }
 
     $(document).on('click', '.btn-remove-img', function(e) {
-        e.stopPropagation(); // Chặn không cho mở hộp thoại chọn file khi bấm xóa
-        const indexToRemove = $(this).data('index');
+        e.stopPropagation();
+        const idx = $(this).data('index');
         const newDt = new DataTransfer();
-        Array.from(dt.files).forEach((file, index) => {
-            if (index !== indexToRemove) newDt.items.add(file);
-        });
-        dt.items.clear();
-        Array.from(newDt.files).forEach(file => dt.items.add(file));
+        Array.from(dt.files).forEach((f, i) => { if (i !== idx) newDt.items.add(f); });
+        dt.items.clear(); Array.from(newDt.files).forEach(f => dt.items.add(f));
         input.files = dt.files;
         renderPreview();
     });
 
-    // ==============================================
-    // LOGIC EXCEL DROPZONE (MÀU XANH LÁ)
-    // ==============================================
-    
-    const excelInput = document.getElementById('id_excel_file'); // ID mặc định của Django
+    // 5. EXCEL PREVIEW (JS)
+    const excelInput = document.getElementById('id_excel_file');
     const excelZone = $('#excel-drop-zone');
-    const excelNameDisplay = $('#excel-file-name');
 
-    // 1. Click nút chọn
-    $('#btn-select-excel').on('click', function(e) {
-        e.stopPropagation();
-        $(excelInput).click();
+    $('#btn-select-excel').on('click', function(e) { e.stopPropagation(); $(excelInput).click(); });
+    excelZone.on('click', function(e) { if (!$(e.target).is(excelInput)) $(excelInput).click(); });
+
+    excelZone.on('dragover', function(e) { e.preventDefault(); e.stopPropagation(); $(this).addClass('drag-over-excel'); });
+    excelZone.on('dragleave drop', function(e) { e.preventDefault(); e.stopPropagation(); $(this).removeClass('drag-over-excel'); });
+
+    excelZone.on('drop', function(e) { 
+        if (e.originalEvent.dataTransfer.files.length > 0) processExcel(e.originalEvent.dataTransfer.files[0]); 
+    });
+    $(excelInput).on('change', function() { 
+        if (this.files.length > 0) processExcel(this.files[0]); 
     });
 
-    // 2. Click vùng trống
-    excelZone.on('click', function(e) {
-        if ($(e.target).is(excelInput)) return;
-        $(excelInput).click();
-    });
-
-    // 3. Hiệu ứng Kéo thả
-    excelZone.on('dragover', function(e) {
-        e.preventDefault(); e.stopPropagation();
-        $(this).addClass('drag-over-excel');
-    });
-    excelZone.on('dragleave drop', function(e) {
-        e.preventDefault(); e.stopPropagation();
-        $(this).removeClass('drag-over-excel');
-    });
-
-    // 4. Thả file
-    excelZone.on('drop', function(e) {
-        const files = e.originalEvent.dataTransfer.files;
-        if (files.length > 0) {
-            handleExcelFile(files[0]);
-        }
-    });
-
-    // 5. Chọn từ hộp thoại
-    $(excelInput).on('change', function() {
-        if (this.files.length > 0) {
-            handleExcelFile(this.files[0]);
-        }
-    });
-
-    // Hàm xử lý hiển thị tên file
-    function handleExcelFile(file) {
-        // Kiểm tra đuôi file (cơ bản)
-        if (!file.name.match(/\.(xls|xlsx)$/)) {
-            alert("Vui lòng chỉ chọn file Excel (.xls, .xlsx)");
-            return;
-        }
-
-        // Gán file vào input (để gửi lên server)
-        // Lưu ý: Input file đơn không hỗ trợ gán trực tiếp từ DataTransfer trong một số trình duyệt cũ,
-        // nhưng với Drop thì cần gán lại.
-        const dtExcel = new DataTransfer();
-        dtExcel.items.add(file);
-        excelInput.files = dtExcel.files;
-
-        // Hiển thị tên file
-        excelNameDisplay.html(`<i class="bi bi-check-circle-fill"></i> Đã chọn: ${file.name}`);
+    function processExcel(file) {
+        $('#excel-file-name').html(`<i class="bi bi-check-circle-fill"></i> ${file.name}`);
+        
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var data = new Uint8Array(e.target.result);
+            var workbook = XLSX.read(data, {type: 'array'});
+            var jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
+            
+            // Chỉ hỏi xóa nếu có dữ liệu mới từ Excel
+            if (jsonData.length > 1 && confirm("Xóa dữ liệu cũ trong bảng và điền từ Excel?")) {
+                // Xóa các dòng hiển thị (trừ template ẩn)
+                // Lưu ý: Với trang Sửa, ta nên cẩn trọng. Nếu xóa dòng cũ -> Check delete.
+                // Ở đây logic đơn giản là xóa hết các dòng 'mới thêm'. Dòng cũ từ DB nên giữ lại hoặc xử lý riêng.
+                // Nhưng để đơn giản cho import Excel:
+                
+                // Xóa các dòng MỚI THÊM (chưa có ID)
+                $('#form-body .item-row').not('#empty-form-template .item-row').each(function(){
+                     if(!$(this).find('input[name$="-id"]').val()) {
+                         $(this).remove();
+                     }
+                });
+                
+                // Code thêm dòng từ Excel...
+                for (var i = 1; i < jsonData.length; i++) {
+                    var row = jsonData[i];
+                    if (!row || row.length === 0) continue;
+                    
+                    $('#add-row').click();
+                    var lastRow = $('#form-body .item-row').last();
+                    
+                    lastRow.find('[name$="-ten_tai_san"]').val(row[0] || "");
+                    lastRow.find('[name$="-don_vi_tinh"]').val(row[1] || "Cái");
+                    lastRow.find('[name$="-so_luong"]').val(row[2] || 1);
+                    lastRow.find('[name$="-ghi_chu"]').val(row[6] || "");
+                }
+            }
+        };
+        reader.readAsArrayBuffer(file);
     }
-
 });
 </script>
 {% endblock %}
