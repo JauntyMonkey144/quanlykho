@@ -6,66 +6,219 @@
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-8">
-        <div class="card shadow border-0">
-            <div class="card-header bg-danger text-white fw-bold">
-                <i class="bi bi-arrow-return-left"></i> XÁC NHẬN TRẢ HÀNG - PHIẾU #{{ loan.id }}
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-danger text-white fw-bold d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-arrow-return-left"></i> XÁC NHẬN TRẢ HÀNG - PHIẾU #{{ loan.id }}</span>
+                <a href="{% url 'loan_detail' loan.id %}" class="btn btn-sm btn-light text-danger fw-bold">Quay lại</a>
             </div>
+            
             <div class="card-body">
-                <div class="alert alert-light border">
-                    <strong>Người mượn:</strong> {{ loan.nguoi_muon }} <br>
-                    <strong>Ngày mượn:</strong> {{ loan.ngay_muon|date:"d/m/Y" }} <br>
-                    <strong>Lý do:</strong> {{ loan.ly_do }} <br>
-                    <strong>Ghi chú:</strong> {{ loan.ghi_chu }}
+                <div class="alert alert-light border border-danger border-opacity-25">
+                    <div class="row">
+                        <div class="col-md-6"><strong>Người mượn:</strong> {{ loan.nguoi_muon }}</div>
+                        <div class="col-md-6"><strong>Ngày mượn:</strong> {{ loan.ngay_muon|date:"d/m/Y" }}</div>
+                        <div class="col-md-12 mt-2"><strong>Lý do:</strong> {{ loan.ly_do }}</div>
+                    </div>
                 </div>
 
-                <h6 class="fw-bold mt-3">Danh sách thiết bị đã mượn:</h6>
-                <table class="table table-sm table-bordered">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Tên thiết bị</th>
-                            <th>Đơn vị tính</th>
-                            <th>Số lượng</th>
-                            <th>Ngày mượn</th>
-                            <th>Ngày trả dự kiến</th>
-                            <th>Tình trạng khi mượn</th>
-                            <th>Ghi chú ban đầu</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in loan.items.all %}
-                        <tr>
-                            <td>{{ item.ten_tai_san }}</td>
-                            <td>{{ item.don_vi_tinh }}</td>
-                            <td>{{ item.so_luong }}</td>
-                            <td>{{ item.ngay_muon|date:"d/m/Y" }}</td>
-                            <td>{{ item.ngay_tra_du_kien|date:"d/m/Y" }}</td>
-                            <td>
-                                {% if item.tinh_trang == 'khac' %}
-                                    {{ item.tinh_trang_khac }} {% else %}
-                                    {{ item.get_tinh_trang_display }} {% endif %}
-                            </td>
-                            <td>{{ item.ghi_chu }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                <h6 class="fw-bold text-danger mt-4 mb-3"><i class="bi bi-box-seam"></i> Danh sách thiết bị đã mượn:</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered align-middle">
+                        <thead class="table-light text-center">
+                            <tr>
+                                <th>Tên thiết bị</th>
+                                <th>ĐVT</th>
+                                <th>SL</th>
+                                <th>Tình trạng mượn</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in loan.items.all %}
+                            <tr>
+                                <td>{{ item.ten_tai_san }}</td>
+                                <td class="text-center">{{ item.don_vi_tinh }}</td>
+                                <td class="text-center">{{ item.so_luong }}</td>
+                                <td>
+                                    {% if item.tinh_trang == 'khac' %}
+                                        {{ item.tinh_trang_khac }}
+                                    {% else %}
+                                        {{ item.get_tinh_trang_display }}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
 
-                <hr>
+                <hr class="my-4">
 
-                <form method="post" enctype="multipart/form-data">
+                <form method="post" enctype="multipart/form-data" id="returnForm">
                     {% csrf_token %}
                     
-                    {{ form|crispy }}
+                    <div class="mb-4">
+                        {{ form.ghi_chu_tra|as_crispy_field }}
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="fw-bold text-danger mb-2"><i class="bi bi-camera-fill"></i> Ảnh hiện trạng khi trả (Bắt buộc)</label>
+                        
+                        <div id="drop-zone" class="upload-area">
+                            <div class="upload-content">
+                                <i class="bi bi-cloud-arrow-up-fill text-danger display-4"></i>
+                                <p class="mt-2 mb-3 text-muted fw-bold">Kéo thả ảnh trả hàng vào đây</p>
+                                
+                                <button type="button" id="btn-select" class="btn btn-danger btn-sm rounded-pill px-4 fw-bold shadow-sm">
+                                    <i class="bi bi-folder2-open"></i> Chọn từ thiết bị
+                                </button>
+                                <div class="small text-muted mt-2 fst-italic">(Hoặc click vào khung này)</div>
+                            </div>
+                            <div class="d-none">
+                                {{ form.return_images }}
+                            </div>
+                        </div>
+
+                        <div id="preview-container" class="row g-2 mt-3"></div>
+                    </div>
                     
-                    <div class="d-grid gap-2 mt-4">
-                        <button type="submit" class="btn btn-danger fw-bold">
-                            <i class="bi bi-upload"></i> GỬI YÊU CẦU TRẢ HÀNG
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-danger btn-lg fw-bold shadow-sm">
+                            <i class="bi bi-check-circle-fill"></i> XÁC NHẬN TRẢ HÀNG
                         </button>
-                        <a href="{% url 'loan_detail' loan.id %}" class="btn btn-outline-secondary">Hủy bỏ</a>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+    .upload-area {
+        border: 2px dashed #fca5a5; /* Viền đỏ nhạt */
+        border-radius: 12px;
+        background-color: #fff;
+        padding: 2rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .upload-area:hover {
+        border-color: #dc3545; /* Đỏ đậm khi hover */
+        background-color: #fff5f5;
+    }
+    .upload-area.drag-over {
+        border-style: solid;
+        border-color: #dc3545;
+        background-color: #ffebe9;
+        transform: scale(1.02);
+    }
+    .upload-content { pointer-events: auto; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // ==============================================
+    // LOGIC KÉO THẢ & XÓA ẢNH (DATA TRANSFER)
+    // ==============================================
+    
+    // ID của input file trong form ReturnLoanForm (thường là id_return_images)
+    const input = document.getElementById('id_return_images'); 
+    const dropZone = $('#drop-zone');
+    const dt = new DataTransfer(); // Bộ nhớ đệm file
+
+    // 1. Click nút chọn
+    $('#btn-select').on('click', function(e) {
+        e.stopPropagation();
+        $(input).click();
+    });
+
+    // 2. Click vùng trống
+    dropZone.on('click', function(e) {
+        if (!$(e.target).is(input)) $(input).click();
+    });
+
+    // 3. Hiệu ứng Kéo thả
+    dropZone.on('dragover', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        $(this).addClass('drag-over');
+    });
+
+    dropZone.on('dragleave drop', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        $(this).removeClass('drag-over');
+    });
+
+    // 4. Thả file
+    dropZone.on('drop', function(e) {
+        const files = e.originalEvent.dataTransfer.files;
+        handleFiles(files);
+    });
+
+    // 5. Chọn từ hộp thoại
+    $(input).on('change', function() {
+        handleFiles(this.files);
+    });
+
+    // Hàm xử lý file
+    function handleFiles(files) {
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            // Chỉ nhận ảnh
+            if (file.type.startsWith('image/')) {
+                dt.items.add(file);
+            }
+        }
+        // Cập nhật input gốc
+        input.files = dt.files;
+        renderPreview();
+    }
+
+    // Hàm vẽ preview
+    function renderPreview() {
+        $('#preview-container').html('');
+        
+        Array.from(dt.files).forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const html = `
+                    <div class="col-auto fade-in">
+                        <div class="position-relative border border-danger border-opacity-25 rounded p-1 bg-white shadow-sm" style="width: 100px; height: 100px;">
+                            <img src="${e.target.result}" class="w-100 h-100 object-fit-cover rounded">
+                            
+                            <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 p-0 d-flex align-items-center justify-content-center rounded-circle btn-remove-img" 
+                                    data-index="${index}" 
+                                    title="Xóa ảnh này"
+                                    style="width: 20px; height: 20px; transform: translate(30%, -30%); box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                                <i class="bi bi-x small"></i>
+                            </button>
+                        </div>
+                    </div>`;
+                $('#preview-container').append(html);
+            }
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // Sự kiện Xóa ảnh
+    $(document).on('click', '.btn-remove-img', function(e) {
+        e.stopPropagation();
+        const indexToRemove = $(this).data('index');
+        
+        const newDt = new DataTransfer();
+        Array.from(dt.files).forEach((file, index) => {
+            if (index !== indexToRemove) {
+                newDt.items.add(file);
+            }
+        });
+        
+        dt.items.clear();
+        Array.from(newDt.files).forEach(file => dt.items.add(file));
+        
+        input.files = dt.files;
+        renderPreview();
+    });
+});
+</script>
 {% endblock %}
