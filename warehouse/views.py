@@ -7,7 +7,8 @@ from django.core.mail import send_mail
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.db.models import Q 
-
+from django.utils.safestring import mark_safe # <--- Để hiển thị HTML trong thông báo
+from django.urls import reverse               # <--- Để lấy đường dẫn URL
 import pandas as pd
 from weasyprint import HTML
 
@@ -157,8 +158,18 @@ def create_loan(request):
             files = request.FILES.getlist('photos')
             for f in files:
                 LoanImage.objects.create(loan=loan, image=f, image_type='borrow')
-
-            messages.success(request, f"Đã tạo phiếu #{loan.id} thành công!")
+            detail_url = reverse('loan_detail', args=[loan.id])
+            
+            # Tạo nội dung HTML cho thông báo
+            # class 'alert-link' của Bootstrap giúp link đậm và đẹp hơn trong khung thông báo
+            msg_html = f"""
+                Đã tạo phiếu <b>#{loan.id}</b> thành công! 
+                <a href="{detail_url}" class="alert-link text-decoration-underline">
+                    Bấm vào đây để xem chi tiết
+                </a>
+            """
+            messages.success(request, mark_safe(msg_html))
+            
             return redirect('create_loan')
             
     else:
