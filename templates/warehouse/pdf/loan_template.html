@@ -248,42 +248,51 @@
         </table>
     </div>
 
-    {% if loan.ngay_tra_thuc_te %}
-    <div class="section-divider"></div>
-
-    <div class="footer-section">
+<div class="section-divider"></div> <div class="footer-section">
         <div class="return-header">PHẦN XÁC NHẬN TRẢ HÀNG</div>
         
         <div style="text-align: right; margin-bottom: 10px; font-style: italic;">
-            Ngày trả: {{ loan.ngay_tra_thuc_te|date:"d/m/Y" }}
+            {% if loan.ngay_tra_thuc_te %}
+                Ngày trả: {{ loan.ngay_tra_thuc_te|date:"d" }} tháng {{ loan.ngay_tra_thuc_te|date:"m" }} năm {{ loan.ngay_tra_thuc_te|date:"Y" }}
+            {% else %}
+                Ngày ...... tháng ...... năm 20......
+            {% endif %}
         </div>
 
         <table class="sign-table">
             <tr>
                 <td width="50%"></td> 
-                <td width="25%"><div class="sign-title">PHỤ TRÁCH KHO</div><div class="sign-note">(Nhập lại kho)</div></td>
-                <td width="25%"><div class="sign-title">NGƯỜI TRẢ HÀNG</div><div class="sign-note">(Ký, ghi rõ họ tên)</div></td>
+                <td width="25%">
+                    <div class="sign-title">PHỤ TRÁCH KHO</div>
+                    <div class="sign-note">(Nhập lại kho)</div>
+                </td>
+                <td width="25%">
+                    <div class="sign-title">NGƯỜI TRẢ HÀNG</div>
+                    <div class="sign-note">(Ký, ghi rõ họ tên)</div>
+                </td>
             </tr>
             <tr>
                 <td></td>
+                
                 <td class="sign-space">
                     {% if loan.user_thu_kho_nhap %}
                         <div class="sign-date">Ngày: {{ loan.ngay_kho_xac_nhan_tra|date:"d/m/Y" }}</div>
                         <strong>{{ loan.user_thu_kho_nhap.last_name }} {{ loan.user_thu_kho_nhap.first_name }}</strong>
+                    {% else %}
+                        &nbsp;
                     {% endif %}
                 </td>
+                
                 <td class="sign-space">
-                    <div class="sign-date">Ngày: {{ loan.ngay_tra_thuc_te|date:"d/m/Y" }}</div>
                     {% if loan.user_nguoi_tra %}
+                        <div class="sign-date">Ngày: {{ loan.ngay_tra_thuc_te|date:"d/m/Y" }}</div>
                         <strong>{{ loan.user_nguoi_tra.last_name }} {{ loan.user_nguoi_tra.first_name }}</strong>
                     {% else %}
-                        <strong>{{ loan.nguoi_muon }}</strong>
+                        &nbsp;
                     {% endif %}
                 </td>
             </tr>
         </table>
     </div>
-    {% endif %}
-
 </body>
 </html>
