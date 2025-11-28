@@ -207,7 +207,7 @@
 
 <div class="footer-section">
         <div style="text-align: right; margin-bottom: 10px; font-style: italic;">
-            Tp. Hồ Chí Minh, ngày {{ loan.ngay_tao|date:"d" }} tháng {{ loan.ngay_tao|date:"m" }} năm {{ loan.ngay_tao|date:"Y" }}
+            Tp. Hồ Chí Minh, ngày {{ loan.ngay_gui|date:"d" }} tháng {{ loan.ngay_gui|date:"m" }} năm {{ loan.ngay_gui|date:"Y" }}
         </div>
 
         <table class="sign-table">
@@ -240,7 +240,7 @@
                         {% endif %}
                     </td>
                     <td class="sign-space">
-                        <div class="sign-date">Ngày: {{ loan.ngay_tao|date:"d/m/Y" }}</div>
+                        <div class="sign-date">Ngày: {{ loan.ngay_gui|date:"d/m/Y" }}</div>
                         <strong>{{ loan.nguoi_muon }}</strong>
                     </td>
                 </tr>
