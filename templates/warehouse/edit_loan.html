@@ -21,7 +21,6 @@
     </div>
 
     {% include "warehouse/includes/loan_form_content.html" %}
-
 </form>
 {% endblock %}
 
@@ -30,7 +29,7 @@
 <script>
 $(document).ready(function() {
 
-    // 1. AUTOCOMPLETE NHÂN VIÊN
+    // --- 1. AUTOCOMPLETE NHÂN VIÊN ---
     var searchInput = $('#id_ma_nhan_vien');
     var suggestionBox = $('#suggestion-box');
 
@@ -80,27 +79,21 @@ $(document).ready(function() {
         }
     });
 
-    // 2. TÌNH TRẠNG (ẨN/HIỆN Ô KHÁC)
+    // --- 2. TÌNH TRẠNG ---
     $(document).on('change', '.condition-select', function() {
         var val = $(this).val();
         var div = $(this).siblings('.condition-other-wrapper');
         if (val === 'khac') { div.removeClass('d-none').find('input').focus(); }
         else { div.addClass('d-none').find('input').val(''); }
     });
-    // Kích hoạt change event cho các dòng đã có dữ liệu khi load trang sửa
-    $('.condition-select').each(function() {
-        $(this).trigger('change');
-    });
+    $('.condition-select').trigger('change');
 
-    // 3. FORMSET (THÊM/XÓA DÒNG)
+    // --- 3. FORMSET ---
     function updateRowIndices() {
         $('#items-table .item-row:visible').each(function(index) {
             $(this).find('.row-index').text(index + 1);
         });
     }
-    // Cập nhật STT ngay khi load trang
-    updateRowIndices();
-
     $('#add-row').click(function() {
         var totalForms = $('#id_items-TOTAL_FORMS');
         var formIdx = parseInt(totalForms.val());
@@ -108,31 +101,26 @@ $(document).ready(function() {
         $('#form-body').append(newRow);
         totalForms.val(formIdx + 1);
         updateRowIndices();
-        $('.condition-select').trigger('change'); // Kích hoạt logic ẩn hiện cho dòng mới
+        $('.condition-select').trigger('change');
     });
-
     $(document).on('click', '.delete-row', function() {
         var row = $(this).closest('tr');
-        // Logic xóa thông minh cho Django Formset
         if (row.find('input[name$="-id"]').val()) {
-            // Dòng cũ -> Ẩn đi và tick vào ô DELETE ẩn
             row.find('input[name$="-DELETE"]').prop('checked', true);
             row.hide();
         } else {
-            // Dòng mới thêm chưa lưu -> Xóa hẳn khỏi DOM
             row.remove();
         }
         updateRowIndices();
     });
 
-    // 4. UPLOAD ẢNH (KÉO THẢ & XÓA)
+    // --- 4. UPLOAD ẢNH ---
     const dt = new DataTransfer();
     const input = document.getElementById('id_photos');
     const dropZone = $('#drop-zone');
 
     $('#btn-select').on('click', function(e) { e.stopPropagation(); $('#id_photos').click(); });
     dropZone.on('click', function(e) { if (!$(e.target).is('#id_photos')) $('#id_photos').click(); });
-    
     dropZone.on('dragover', function(e) { e.preventDefault(); e.stopPropagation(); $(this).addClass('drag-over'); });
     dropZone.on('dragleave drop', function(e) { e.preventDefault(); e.stopPropagation(); $(this).removeClass('drag-over'); });
     
@@ -156,7 +144,7 @@ $(document).ready(function() {
                     <div class="col-auto fade-in">
                         <div class="position-relative border rounded p-1 bg-white shadow-sm" style="width: 100px; height: 100px;">
                             <img src="${e.target.result}" class="w-100 h-100 object-fit-cover rounded">
-                            <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 p-0 d-flex align-items-center justify-content-center rounded-circle btn-remove-img" data-index="${index}" style="width: 20px; height: 20px; transform: translate(30%, -30%);"><i class="bi bi-x small"></i></button>
+                            <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 p-0 d-flex align-items-center justify-content-center rounded-circle btn-remove-img" data-index="${index}" style="width: 20px; height: 20px; transform: translate(30%, -30%); box-shadow: 0 2px 4px rgba(0,0,0,0.2);"><i class="bi bi-x small"></i></button>
                         </div>
                     </div>`);
             }
@@ -174,57 +162,109 @@ $(document).ready(function() {
         renderPreview();
     });
 
-    // 5. EXCEL PREVIEW (JS)
+    // --- 5. EXCEL PREVIEW & DELETE ---
     const excelInput = document.getElementById('id_excel_file');
     const excelZone = $('#excel-drop-zone');
+    const excelNameDisplay = $('#excel-file-name');
 
     $('#btn-select-excel').on('click', function(e) { e.stopPropagation(); $(excelInput).click(); });
-    excelZone.on('click', function(e) { if (!$(e.target).is(excelInput)) $(excelInput).click(); });
+    // Không kích hoạt click nếu bấm vào nút Xóa
+    excelZone.on('click', function(e) { 
+        if (!$(e.target).is(excelInput) && !$(e.target).closest('#btn-remove-excel').length) {
+            $(excelInput).click(); 
+        }
+    });
 
     excelZone.on('dragover', function(e) { e.preventDefault(); e.stopPropagation(); $(this).addClass('drag-over-excel'); });
     excelZone.on('dragleave drop', function(e) { e.preventDefault(); e.stopPropagation(); $(this).removeClass('drag-over-excel'); });
-
+    
     excelZone.on('drop', function(e) { 
-        if (e.originalEvent.dataTransfer.files.length > 0) processExcel(e.originalEvent.dataTransfer.files[0]); 
+        if (e.originalEvent.dataTransfer.files.length > 0) handleExcelFile(e.originalEvent.dataTransfer.files[0]); 
     });
     $(excelInput).on('change', function() { 
-        if (this.files.length > 0) processExcel(this.files[0]); 
+        if (this.files.length > 0) handleExcelFile(this.files[0]); 
+    });
+
+    function handleExcelFile(file) {
+        if (!file.name.match(/\.(xls|xlsx)$/)) {
+            alert("Vui lòng chỉ chọn file Excel!");
+            return;
+        }
+        
+        // Gán file vào input (cho chắc)
+        const dtEx = new DataTransfer(); dtEx.items.add(file); excelInput.files = dtEx.files;
+        
+        // Hiển thị tên file và nút xóa
+        excelNameDisplay.html(`
+            <div class="d-flex align-items-center justify-content-center gap-2 p-2 bg-success bg-opacity-10 rounded mt-2 border border-success">
+                <span class="text-success fw-bold"><i class="bi bi-file-earmark-excel-fill"></i> ${file.name}</span>
+                <a href="javascript:void(0)" id="btn-remove-excel" class="text-danger text-decoration-none fw-bold px-2" title="Xóa file này">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+            </div>
+        `);
+        processExcel(file);
+    }
+
+    // Sự kiện xóa file Excel
+    $(document).on('click', '#btn-remove-excel', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        
+        $(excelInput).val(''); // Reset input
+        excelNameDisplay.html(''); // Xóa hiển thị tên
+        
+        if(confirm("Bạn có muốn xóa các dòng dữ liệu đã import từ Excel không?")) {
+             // Chỉ xóa các dòng mới (chưa có ID)
+             $('#form-body .item-row').not('#empty-form-template .item-row').each(function(){
+                 if(!$(this).find('input[name$="-id"]').val()) {
+                     $(this).remove();
+                 }
+             });
+             // Reset nếu xóa hết sạch
+             if($('#form-body .item-row').length === 0) {
+                 $('#add-row').click();
+             }
+             updateRowIndices();
+        }
     });
 
     function processExcel(file) {
-        $('#excel-file-name').html(`<i class="bi bi-check-circle-fill"></i> ${file.name}`);
-        
         var reader = new FileReader();
         reader.onload = function(e) {
             var data = new Uint8Array(e.target.result);
             var workbook = XLSX.read(data, {type: 'array'});
             var jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
             
-            // Chỉ hỏi xóa nếu có dữ liệu mới từ Excel
-            if (jsonData.length > 1 && confirm("Xóa dữ liệu cũ trong bảng và điền từ Excel?")) {
-                // Xóa các dòng hiển thị (trừ template ẩn)
-                // Lưu ý: Với trang Sửa, ta nên cẩn trọng. Nếu xóa dòng cũ -> Check delete.
-                // Ở đây logic đơn giản là xóa hết các dòng 'mới thêm'. Dòng cũ từ DB nên giữ lại hoặc xử lý riêng.
-                // Nhưng để đơn giản cho import Excel:
-                
-                // Xóa các dòng MỚI THÊM (chưa có ID)
-                $('#form-body .item-row').not('#empty-form-template .item-row').each(function(){
-                     if(!$(this).find('input[name$="-id"]').val()) {
-                         $(this).remove();
-                     }
+            if (jsonData.length > 1 && confirm("Tìm thấy dữ liệu Excel. Tự động điền vào bảng?")) {
+                // Xóa dữ liệu trắng cũ nếu có
+                $('#form-body .item-row').each(function(){
+                    var val = $(this).find('input[name$="-ten_tai_san"]').val();
+                    if(!val) $(this).remove();
                 });
-                
-                // Code thêm dòng từ Excel...
+
                 for (var i = 1; i < jsonData.length; i++) {
                     var row = jsonData[i];
                     if (!row || row.length === 0) continue;
-                    
+
                     $('#add-row').click();
                     var lastRow = $('#form-body .item-row').last();
                     
+                    // Mapping: 0-Ten, 1-DVT, 2-SL, 3-NgayMuon, 4-NgayTra, 5-TinhTrang, 6-GhiChu
                     lastRow.find('[name$="-ten_tai_san"]').val(row[0] || "");
                     lastRow.find('[name$="-don_vi_tinh"]').val(row[1] || "Cái");
                     lastRow.find('[name$="-so_luong"]').val(row[2] || 1);
+                    
+                    // Xử lý Tình trạng
+                    var ttText = (row[5] || "").toLowerCase();
+                    var ttVal = 'binh_thuong';
+                    if (ttText.includes('hư') || ttText.includes('hỏng')) ttVal = 'hu_hong';
+                    else if (ttText && !ttText.includes('bình thường')) {
+                        ttVal = 'khac';
+                        lastRow.find('.condition-other-wrapper').removeClass('d-none');
+                        lastRow.find('[name$="-tinh_trang_khac"]').val(row[5]);
+                    }
+                    lastRow.find('[name$="-tinh_trang"]').val(ttVal);
+                    
                     lastRow.find('[name$="-ghi_chu"]').val(row[6] || "");
                 }
             }
