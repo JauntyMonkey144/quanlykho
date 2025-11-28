@@ -229,7 +229,7 @@
                     <td width="25%"><div class="sign-title">NGƯỜI ĐỀ XUẤT</div><div class="sign-note">(Ký, ghi rõ họ tên)</div></td>
                 </tr>
             </thead>
-<tbody>
+            <tbody>
                 <tr>
                     <td class="sign-space">
                         {% if loan.user_giam_doc %}
@@ -274,7 +274,7 @@
                     </td>
                     
                     <td class="sign-space">
-                        <div class="sign-date">Ngày: {{ loan.ngay_gui|date:"d/m/Y" }}</div>
+                        <div class="sign-date">Ngày: {{ loan.ngay_tao|date:"d/m/Y" }}</div>
                         
                         {% if loan.created_by.profile.signature %}
                             <img src="{{ loan.created_by.profile.signature.url }}" class="sign-img">
