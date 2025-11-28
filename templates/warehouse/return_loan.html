@@ -17,6 +17,7 @@
                     <div class="row">
                         <div class="col-md-6"><strong>Người mượn:</strong> {{ loan.nguoi_muon }}</div>
                         <div class="col-md-6"><strong>Ngày mượn:</strong> {{ loan.ngay_muon|date:"d/m/Y" }}</div>
+                        <div class="col-md-12 mt-2"><strong>Ghi chú:</strong> {{ loan.ghi_chu }}
                         <div class="col-md-12 mt-2"><strong>Lý do:</strong> {{ loan.ly_do }}</div>
                     </div>
                 </div>
@@ -27,8 +28,10 @@
                         <thead class="table-light text-center">
                             <tr>
                                 <th>Tên thiết bị</th>
-                                <th>ĐVT</th>
-                                <th>SL</th>
+                                <th>Đơn vị tính</th>
+                                <th>Số lượng</th>
+                                <th>Ngày mượn</th>
+                                <th>Ngày trả dự kiến</th>
                                 <th>Tình trạng mượn</th>
                             </tr>
                         </thead>
@@ -36,15 +39,16 @@
                             {% for item in loan.items.all %}
                             <tr>
                                 <td>{{ item.ten_tai_san }}</td>
-                                <td class="text-center">{{ item.don_vi_tinh }}</td>
-                                <td class="text-center">{{ item.so_luong }}</td>
+                                <td>{{ item.don_vi_tinh }}</td>
+                                <td>{{ item.so_luong }}</td>
+                                <td>{{ item.ngay_muon|date:"d/m/Y" }}</td>
+                                <td>{{ item.ngay_tra_du_kien|date:"d/m/Y" }}</td>
                                 <td>
                                     {% if item.tinh_trang == 'khac' %}
-                                        {{ item.tinh_trang_khac }}
-                                    {% else %}
-                                        {{ item.get_tinh_trang_display }}
-                                    {% endif %}
+                                        {{ item.tinh_trang_khac }} {% else %}
+                                        {{ item.get_tinh_trang_display }} {% endif %}
                                 </td>
+                                <td>{{ item.ghi_chu }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
