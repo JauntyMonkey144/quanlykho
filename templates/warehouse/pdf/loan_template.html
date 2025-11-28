@@ -116,12 +116,22 @@
         .sign-title { font-weight: bold; text-transform: uppercase; font-size: 9pt; margin-bottom: 2px; }
         .sign-note { font-style: italic; font-size: 8pt; margin-top: 0; }
         /* Tăng chiều cao khoảng trống ký thêm một chút */
-            .sign-space { 
-                height: 90px; /* Tăng từ 70px/80px lên 90px */
-                vertical-align: bottom !important; 
-                padding-bottom: 5px;
+    /* Class cho ảnh chữ ký */
+            .sign-img {
+                max-width: 100px;  /* Giới hạn chiều rộng */
+                max-height: 60px;  /* Giới hạn chiều cao */
+                object-fit: contain;
+                display: block;
+                margin: 0 auto;    /* Căn giữa */
             }
             
+            /* Giảm chiều cao khoảng trống nếu có ảnh để bố cục gọn hơn */
+            .sign-space { 
+                height: 90px; 
+                vertical-align: bottom !important; 
+                padding-bottom: 5px;
+            }            
+        
             /* Class mới cho ngày ký */
             .sign-date {
                 font-size: 9pt;
@@ -219,28 +229,59 @@
                     <td width="25%"><div class="sign-title">NGƯỜI ĐỀ XUẤT</div><div class="sign-note">(Ký, ghi rõ họ tên)</div></td>
                 </tr>
             </thead>
-            <tbody>
+<tbody>
                 <tr>
                     <td class="sign-space">
                         {% if loan.user_giam_doc %}
                             <div class="sign-date">Ngày: {{ loan.ngay_giam_doc_duyet|date:"d/m/Y" }}</div>
+                            
+                            {% if loan.user_giam_doc.profile.signature %}
+                                <img src="{{ loan.user_giam_doc.profile.signature.url }}" class="sign-img">
+                            {% else %}
+                                <div style="height: 40px;"></div>
+                            {% endif %}
+                            
                             <strong>{{ loan.user_giam_doc.last_name }} {{ loan.user_giam_doc.first_name }}</strong>
                         {% endif %}
                     </td>
+                    
                     <td class="sign-space">
                         {% if loan.user_thu_kho_xuat %}
                             <div class="sign-date">Ngày: {{ loan.ngay_kho_xac_nhan_muon|date:"d/m/Y" }}</div>
+                            
+                            {% if loan.user_thu_kho_xuat.profile.signature %}
+                                <img src="{{ loan.user_thu_kho_xuat.profile.signature.url }}" class="sign-img">
+                            {% else %}
+                                <div style="height: 40px;"></div>
+                            {% endif %}
+
                             <strong>{{ loan.user_thu_kho_xuat.last_name }} {{ loan.user_thu_kho_xuat.first_name }}</strong>
                         {% endif %}
                     </td>
+                    
                     <td class="sign-space">
                         {% if loan.user_truong_phong %}
                             <div class="sign-date">Ngày: {{ loan.ngay_truong_phong_duyet|date:"d/m/Y" }}</div>
+                            
+                            {% if loan.user_truong_phong.profile.signature %}
+                                <img src="{{ loan.user_truong_phong.profile.signature.url }}" class="sign-img">
+                            {% else %}
+                                <div style="height: 40px;"></div>
+                            {% endif %}
+
                             <strong>{{ loan.user_truong_phong.last_name }} {{ loan.user_truong_phong.first_name }}</strong>
                         {% endif %}
                     </td>
+                    
                     <td class="sign-space">
                         <div class="sign-date">Ngày: {{ loan.ngay_gui|date:"d/m/Y" }}</div>
+                        
+                        {% if loan.created_by.profile.signature %}
+                            <img src="{{ loan.created_by.profile.signature.url }}" class="sign-img">
+                        {% else %}
+                            <div style="height: 40px;"></div>
+                        {% endif %}
+
                         <strong>{{ loan.nguoi_muon }}</strong>
                     </td>
                 </tr>
