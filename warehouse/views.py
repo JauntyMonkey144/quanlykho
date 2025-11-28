@@ -369,22 +369,23 @@ def loan_action(request, pk, action):
         recipients = thu_kho_emails
         msg = f"Người dùng {loan.nguoi_muon} báo đã trả hàng phiếu #{loan.id}. Vui lòng kiểm tra."
 
-    # 6. KHO XÁC NHẬN ĐÃ NHẬN (Returning -> Returned)
-    elif action == 'warehouse_confirm':
-        if not check_perm('ThuKho'):
-            messages.error(request, "Bạn không có quyền Thủ Kho!")
-            return redirect('loan_detail', pk=pk)
-            
-        loan.status = 'returned'
-        loan.user_thu_kho_nhap = request.user  # <--- Lưu người nhận lại hàng (MỚI THÊM)
-        loan.ngay_kho_xac_nhan_tra = timezone.now() # <--- Thêm dòng này
-        # Failsafe: Nếu bước trước chưa lưu ngày, thì lưu ngay bây giờ
-        if not loan.ngay_tra_thuc_te:
-            loan.ngay_tra_thuc_te = timezone.now()
-            
-        history_action = "Kho xác nhận Đã nhận"
-        recipients = user_email
-        msg = f"Kho đã nhận lại đầy đủ hàng phiếu #{loan.id}. Quy trình hoàn tất."
+        elif action == 'warehouse_confirm':
+                if not check_perm('ThuKho'):
+                    messages.error(request, "Bạn không có quyền Thủ Kho!")
+                    return redirect('loan_detail', pk=pk)
+                    
+                loan.status = 'returned'
+                loan.user_thu_kho_nhap = request.user
+                
+                # --- THÊM ĐOẠN KIỂM TRA NÀY ---
+                # Nếu chưa có ngày trả thực tế (do lỗi bước trước), thì lấy ngày giờ hiện tại
+                if not loan.ngay_tra_thuc_te:
+                    loan.ngay_tra_thuc_te = timezone.now()
+                
+                # Lưu thêm ngày kho xác nhận
+                loan.ngay_kho_xac_nhan_tra = timezone.now()
+                
+                msg = f"Kho đã nhận lại đầy đủ hàng phiếu #{loan.id}. Quy trình hoàn tất."
         
     # 7. TỪ CHỐI (Reject)
     elif action == 'reject':
@@ -436,11 +437,23 @@ def return_loan(request, pk):
                 LoanImage.objects.create(loan=loan, image=f, image_type='return')
             
             loan.status = 'returning'
+
+            loan.ngay_tra_thuc_te = timezone.now() # Lưu thời gian hiện tại
+            loan.user_nguoi_tra = request.user     # Lưu người thực hiện trả
+            
             note = form.cleaned_data.get('ghi_chu_tra')
             if note:
                 current = timezone.now().strftime("%d/%m")
                 loan.ghi_chu = f"{loan.ghi_chu or ''}\n[{current}] Trả: {note}"
             loan.save()
+
+            # 4. Ghi nhật ký (giữ nguyên)
+            LoanHistory.objects.create(
+                loan=loan,
+                user=request.user,
+                action="Yêu cầu Trả hàng",
+                note=f"Ghi chú trả: {note}" if note else ""
+            )
             
             messages.success(request, "Đã gửi yêu cầu trả hàng!")
             return redirect('loan_detail', pk=pk)
