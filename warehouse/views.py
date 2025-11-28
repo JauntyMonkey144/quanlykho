@@ -361,7 +361,6 @@ def loan_action(request, pk, action):
              return redirect('loan_detail', pk=pk)
 
         loan.status = 'returning'
-        loan.ngay_tra_thuc_te = timezone.now()
         loan.user_nguoi_tra = request.user     # <--- Lưu người trả hàng
         loan.ngay_tra_thuc_te = timezone.now() # Dòng này đã có, giữ nguyên
         recipients = thu_kho_emails
