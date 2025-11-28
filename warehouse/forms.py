@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, LoanSlip, LoanItem, Employee
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Submit, Row, Column
 from django.forms import inlineformset_factory
@@ -88,6 +88,14 @@ class LoanSlipForm(forms.ModelForm):
             'phong_ban': forms.TextInput(attrs={'readonly': 'readonly'}),
             'ly_do': forms.Textarea(attrs={'rows': 3}),
         }
+        # --- 1. KIỂM TRA MÃ NHÂN VIÊN ---
+    def clean_ma_nhan_vien(self):
+        ma = self.cleaned_data.get('ma_nhan_vien')
+        if ma:
+            # Kiểm tra xem mã có trong database không
+            if not Employee.objects.filter(ma_nhan_vien=ma).exists():
+                raise forms.ValidationError("❌ Mã nhân viên này không tồn tại trong hệ thống!")
+        return ma
 
 # === 1. ĐỊNH NGHĨA FORM CON (HÀNG HÓA) - BẠN ĐANG THIẾU CÁI NÀY ===
 class LoanItemForm(forms.ModelForm):
@@ -97,9 +105,8 @@ class LoanItemForm(forms.ModelForm):
         fields = ['ten_tai_san', 'don_vi_tinh', 'so_luong', 'ngay_muon', 'ngay_tra_du_kien', 'tinh_trang', 'tinh_trang_khac', 'ghi_chu']
         
         widgets = {
-            'ngay_muon': forms.DateInput(attrs={'type': 'date'}),
+            'ngay_muon': forms.DateInput(attrs={'type': 'date', 'readonly': False}),            
             'ngay_tra_du_kien': forms.DateInput(attrs={'type': 'date'}),
-            
             # Thêm class để Javascript bắt sự kiện
             'tinh_trang': forms.Select(attrs={'class': 'form-select condition-select form-select-sm'}),
             'tinh_trang_khac': forms.TextInput(attrs={'class': 'form-control condition-input form-control-sm', 'placeholder': 'Nhập tình trạng...'}),
@@ -113,7 +120,14 @@ class LoanItemForm(forms.ModelForm):
             'ten_tai_san': '', 'don_vi_tinh': '', 'so_luong': '', 'ngay_muon': '', 'ngay_tra_du_kien': '',
             'tinh_trang': '', 'tinh_trang_khac': '', 'ghi_chu': ''
         }
-
+            # --- 2. KIỂM TRA NGÀY MƯỢN (PHẢI LÀ HÔM NAY) ---
+        def clean_ngay_muon(self):
+            ngay = self.cleaned_data.get('ngay_muon')
+            today = timezone.now().date()
+            if ngay and ngay != today:
+                raise forms.ValidationError(f"❌ Ngày mượn phải là ngày hôm nay ({today.strftime('%d/%m/%Y')})!")
+            return ngay
+            
 class ReturnLoanForm(forms.Form):
     # Form này không kế thừa ModelForm vì ta chỉ cần xử lý ảnh và ghi chú trả
     return_images = MultipleFileField(
