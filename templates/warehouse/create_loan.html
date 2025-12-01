@@ -279,16 +279,27 @@ $(document).ready(function() {
                     lastRow.find('[name$="-ngay_muon"]').val(dMuon);
                     lastRow.find('[name$="-ngay_tra_du_kien"]').val(dTra);
                     
-                    // Tình trạng
-                    var ttText = (row[5] || "").toLowerCase();
-                    var ttVal = 'binh_thuong';
-                    if (ttText.includes('hư') || ttText.includes('hỏng')) ttVal = 'hu_hong';
-                    else if (ttText && !ttText.includes('bình thường') && !ttText.includes('tốt')) {
+// --- SỬA LỖI LOGIC TÌNH TRẠNG ---
+                    var ttText = (row[5] || "").toLowerCase().trim();
+                    var ttVal = 'binh_thuong'; // Mặc định
+                    
+                    // 1. ƯU TIÊN KIỂM TRA "BÌNH THƯỜNG" TRƯỚC
+                    // (Để tránh chữ "hư" trong "bình thường" bị bắt nhầm)
+                    if (ttText.includes('bình thường') || ttText.includes('tốt') || ttText.includes('ok') || ttText.includes('mới')) {
+                        ttVal = 'binh_thuong';
+                    } 
+                    // 2. SAU ĐÓ MỚI KIỂM TRA HƯ HỎNG
+                    else if (ttText.includes('hư') || ttText.includes('hỏng') || ttText.includes('lỗi') || ttText.includes('vỡ')) {
+                        ttVal = 'hu_hong';
+                    } 
+                    // 3. CÒN LẠI LÀ KHÁC
+                    else if (ttText.length > 0) {
                         ttVal = 'khac';
                         lastRow.find('.condition-other-wrapper').removeClass('d-none');
                         lastRow.find('[name$="-tinh_trang_khac"]').val(row[5]);
                     }
-                    lastRow.find('[name$="-tinh_trang"]').val(ttVal);
+                    
+                    lastRow.find('[name$="-tinh_trang"]').val(ttVal).trigger('change');
                     
                     lastRow.find('[name$="-ghi_chu"]').val(row[6] || "");
                 }
