@@ -73,11 +73,11 @@ class LoanSlip(models.Model):
 class LoanItem(models.Model):
     loan = models.ForeignKey(LoanSlip, related_name='items', on_delete=models.CASCADE)
     ten_tai_san = models.CharField("Tên tài sản", max_length=200)
-    don_vi_tinh = models.CharField("ĐVT", max_length=50)
+    don_vi_tinh = models.CharField("Đơn vị tính", max_length=50)
     so_luong = models.IntegerField("Số lượng", default=1)
     ngay_muon = models.DateField("Ngày mượn", default=timezone.now) # <--- Thêm dòng này
-    ngay_tra_du_kien = models.DateField("Ngày trả DK", null=True, blank=True)
-    ghi_chu = models.CharField("Ghi chú/Tình trạng", max_length=200, blank=True, null=True)
+    ngay_tra_du_kien = models.DateField("Ngày trả dự kiến", null=True, blank=True)
+    ghi_chu = models.CharField("Ghi chú", max_length=200, blank=True, null=True)
     # --- THÊM MỚI ---
     TINH_TRANG_CHOICES = (
         ('binh_thuong', 'Bình thường'),
