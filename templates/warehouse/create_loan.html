@@ -167,17 +167,15 @@ $(document).ready(function() {
         renderPreview();
     });
 
-    // =========================================================
-    // 5. EXCEL PREVIEW & DELETE (ĐÃ NÂNG CẤP LOGIC)
+// =========================================================
+    // 5. EXCEL PREVIEW & DELETE (LOGIC NGÀY THÁNG SIÊU MẠNH)
     // =========================================================
     const excelInput = document.getElementById('id_excel_file');
     const excelZone = $('#excel-drop-zone');
     const excelNameDisplay = $('#excel-file-name');
 
-    // Sự kiện chọn/kéo thả
     $('#btn-select-excel').on('click', function(e) { e.stopPropagation(); $(excelInput).click(); });
     excelZone.on('click', function(e) { if (!$(e.target).is(excelInput) && !$(e.target).closest('#btn-remove-excel').length) $(excelInput).click(); });
-
     excelZone.on('dragover', function(e) { e.preventDefault(); e.stopPropagation(); $(this).addClass('drag-over-excel'); });
     excelZone.on('dragleave drop', function(e) { e.preventDefault(); e.stopPropagation(); $(this).removeClass('drag-over-excel'); });
 
@@ -188,63 +186,72 @@ $(document).ready(function() {
         if (this.files.length > 0) handleExcelFile(this.files[0]); 
     });
 
-    // Xử lý hiển thị tên file và nút xóa
     function handleExcelFile(file) {
-        if (!file.name.match(/\.(xls|xlsx)$/)) {
-            alert("Vui lòng chỉ chọn file Excel (.xls, .xlsx)");
-            return;
-        }
-        
-        // Gán file vào input (cho chắc)
+        if (!file.name.match(/\.(xls|xlsx)$/)) { alert("Vui lòng chỉ chọn file Excel!"); return; }
         const dtEx = new DataTransfer(); dtEx.items.add(file); excelInput.files = dtEx.files;
-        
-        // Hiển thị tên file và nút xóa (X đỏ)
-        excelNameDisplay.html(`
-            <div class="d-flex align-items-center justify-content-center gap-2 p-2 bg-success bg-opacity-10 rounded mt-2 border border-success">
-                <span class="text-success fw-bold"><i class="bi bi-file-earmark-excel-fill"></i> ${file.name}</span>
-                <a href="javascript:void(0)" id="btn-remove-excel" class="text-danger text-decoration-none fw-bold px-2" title="Xóa file này">
-                    <i class="bi bi-x-circle-fill fs-5"></i>
-                </a>
-            </div>
-        `);
+        excelNameDisplay.html(`<div class="d-flex align-items-center justify-content-center gap-2 p-2 bg-success bg-opacity-10 rounded mt-2 border border-success"><span class="text-success fw-bold"><i class="bi bi-file-earmark-excel-fill"></i> ${file.name}</span><a href="javascript:void(0)" id="btn-remove-excel" class="text-danger text-decoration-none fw-bold px-2" title="Xóa"><i class="bi bi-x-lg"></i></a></div>`);
         processExcel(file);
     }
 
-    // --- SỰ KIỆN NÚT XÓA EXCEL ---
     $(document).on('click', '#btn-remove-excel', function(e) {
         e.preventDefault(); e.stopPropagation();
-        
-        $(excelInput).val(''); // Reset input
-        excelNameDisplay.html(''); // Xóa hiển thị
-        
-        if(confirm("Bạn có muốn xóa luôn dữ liệu đã import trong bảng không?")) {
-             // Chỉ xóa các dòng mới (chưa có ID từ DB)
-             $('#form-body .item-row').not('#empty-form-template .item-row').each(function(){
-                 if(!$(this).find('input[name$="-id"]').val()) {
-                     $(this).remove();
-                 }
-             });
-             // Nếu xóa hết sạch thì thêm lại 1 dòng trống
-             if($('#form-body .item-row:visible').length === 0) {
-                 $('#add-row').click();
-             }
+        $(excelInput).val(''); excelNameDisplay.html('');
+        if(confirm("Xóa dữ liệu Excel trong bảng?")) {
+             $('#form-body .item-row').not('#empty-form-template .item-row').each(function(){ if(!$(this).find('input[name$="-id"]').val()) $(this).remove(); });
+             if($('#form-body .item-row:visible').length === 0) $('#add-row').click();
              updateRowIndices();
         }
     });
 
-    // Hàm đọc và điền dữ liệu
+    // --- HÀM XỬ LÝ NGÀY "BẤT TỬ" ---
+    function safeDate(val) {
+        if (!val) return "";
+        
+        // 1. Nếu là Object Date (SheetJS tự parse)
+        if (val instanceof Date) {
+            // Lấy ngày/tháng/năm theo giờ địa phương để tránh lỗi lệch múi giờ UTC
+            let y = val.getFullYear();
+            let m = (val.getMonth() + 1).toString().padStart(2, '0');
+            let d = val.getDate().toString().padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        // 2. Nếu là chuỗi text
+        let s = String(val).trim();
+        
+        // Trường hợp A: 2025-01-12 hoặc 2025/01/12 (Năm trước)
+        // Regex bắt: 4 số - 1 hoặc 2 số - 1 hoặc 2 số
+        let matchISO = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+        if (matchISO) {
+            let y = matchISO[1];
+            let m = matchISO[2].padStart(2, '0'); // Thêm số 0 nếu thiếu (1 -> 01)
+            let d = matchISO[3].padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        // Trường hợp B: 31/12/2025 hoặc 31-12-2025 (Ngày trước)
+        let matchVN = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+        if (matchVN) {
+            let d = matchVN[1].padStart(2, '0');
+            let m = matchVN[2].padStart(2, '0');
+            let y = matchVN[3];
+            return `${y}-${m}-${d}`;
+        }
+
+        return ""; // Không đọc được
+    }
+
     function processExcel(file) {
         var reader = new FileReader();
         reader.onload = function(e) {
             var data = new Uint8Array(e.target.result);
-            var workbook = XLSX.read(data, {type: 'array', cellDates: true}); // Đọc định dạng ngày
-            var jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1, raw: false, dateNF: 'yyyy-mm-dd'});
+            // cellDates: true để SheetJS cố gắng đọc format ngày của Excel
+            var workbook = XLSX.read(data, {type: 'array', cellDates: true});
+            var jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
             
-            if (jsonData.length > 1 && confirm("Tìm thấy dữ liệu Excel. Tự động điền vào bảng?")) {
-                // Xóa dữ liệu trắng cũ nếu có
-                $('#form-body .item-row').each(function(){
-                    var val = $(this).find('input[name$="-ten_tai_san"]').val();
-                    if(!val) $(this).remove();
+            if (jsonData.length > 1 && confirm("Tự động điền dữ liệu vào bảng?")) {
+                $('#form-body .item-row').not('#empty-form-template .item-row').each(function(){
+                    if(!$(this).find('input[name$="-id"]').val()) $(this).remove();
                 });
 
                 for (var i = 1; i < jsonData.length; i++) {
@@ -254,74 +261,34 @@ $(document).ready(function() {
                     $('#add-row').click();
                     var lastRow = $('#form-body .item-row').last();
                     
-                    // Mapping cột: 0-Ten, 1-DVT, 2-SL, 3-NgayMuon, 4-NgayTra, 5-TinhTrang, 6-GhiChu
+                    // Mapping
                     lastRow.find('[name$="-ten_tai_san"]').val(row[0] || "");
                     lastRow.find('[name$="-don_vi_tinh"]').val(row[1] || "Cái");
                     lastRow.find('[name$="-so_luong"]').val(row[2] || 1);
                     
-                    // --- HÀM CHUYỂN ĐỔI NGÀY "BẤT TỬ" (Chấp nhận mọi định dạng) ---
-                        function convertToInputDate(dateVal) {
-                            if (!dateVal) return "";
-                            
-                            // 1. Nếu SheetJS đã tự đọc ra là Object Date
-                            if (dateVal instanceof Date) {
-                                // Lấy ngày theo giờ địa phương (Tránh lỗi toISOString bị lùi 1 ngày do lệch múi giờ)
-                                var year = dateVal.getFullYear();
-                                var month = ("0" + (dateVal.getMonth() + 1)).slice(-2);
-                                var day = ("0" + dateVal.getDate()).slice(-2);
-                                return `${year}-${month}-${day}`;
-                            }
-                            
-                            // 2. Nếu là chuỗi ký tự (String)
-                            var strVal = String(dateVal).trim();
+                    // --- DÙNG HÀM NGÀY MỚI ---
+                    var dMuon = safeDate(row[3]);
+                    var dTra = safeDate(row[4]);
                     
-                            // Trường hợp A: 31/12/2025 (Việt Nam - có dấu /)
-                            if (strVal.includes('/')) {
-                                var parts = strVal.split('/');
-                                if (parts.length === 3) {
-                                    // Đảo ngược thành Năm-Tháng-Ngày
-                                    // Thêm padStart để đảm bảo số 1 thành 01
-                                    var d = parts[0].padStart(2, '0');
-                                    var m = parts[1].padStart(2, '0');
-                                    var y = parts[2];
-                                    return `${y}-${m}-${d}`;
-                                }
-                            }
-                            
-                            // Trường hợp B: 2025-01-12 (Chuẩn ISO - có dấu -)
-                            if (strVal.includes('-')) {
-                                // Input date cần yyyy-mm-dd. 
-                                // Nếu chuỗi đã đúng chuẩn rồi thì trả về nguyên vẹn.
-                                return strVal;
-                            }
-                            
-                            return ""; // Không đọc được thì trả về rỗng
-                        }
-
-                    lastRow.find('[name$="-ngay_muon"]').val(convertToInputDate(row[3]));
-                    lastRow.find('[name$="-ngay_tra_du_kien"]').val(convertToInputDate(row[4]));
+                    // Nếu ngày mượn trống -> Lấy ngày hôm nay
+                    if (!dMuon) {
+                        let now = new Date();
+                        dMuon = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')}`;
+                    }
                     
-                    // Xử lý Tình trạng (SỬA LẠI)
-                    var ttText = (row[5] || "").toLowerCase().trim();
+                    lastRow.find('[name$="-ngay_muon"]').val(dMuon);
+                    lastRow.find('[name$="-ngay_tra_du_kien"]').val(dTra);
+                    
+                    // Tình trạng
+                    var ttText = (row[5] || "").toLowerCase();
                     var ttVal = 'binh_thuong';
-                    
-                    // 1. Check Bình thường trước
-                    if (ttText.includes('bình thường') || ttText.includes('tốt') || ttText.includes('ok')) {
-                        ttVal = 'binh_thuong';
-                    } 
-                    // 2. Check Hư hỏng sau
-                    else if (ttText.includes('hư') || ttText.includes('hỏng') || ttText.includes('lỗi')) {
-                        ttVal = 'hu_hong';
-                    } 
-                    // 3. Check Khác
-                    else if (ttText.length > 0) {
+                    if (ttText.includes('hư') || ttText.includes('hỏng')) ttVal = 'hu_hong';
+                    else if (ttText && !ttText.includes('bình thường') && !ttText.includes('tốt')) {
                         ttVal = 'khac';
                         lastRow.find('.condition-other-wrapper').removeClass('d-none');
                         lastRow.find('[name$="-tinh_trang_khac"]').val(row[5]);
                     }
-                    
-                    lastRow.find('[name$="-tinh_trang"]').val(ttVal).trigger('change');
-                    // ---------------------------------------
+                    lastRow.find('[name$="-tinh_trang"]').val(ttVal);
                     
                     lastRow.find('[name$="-ghi_chu"]').val(row[6] || "");
                 }
