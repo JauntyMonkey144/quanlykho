@@ -88,6 +88,11 @@
                             </button>
                             <ul class="dropdown-menu">
                                 <li>
+                                    <a class="dropdown-item" href="{% url 'profile' %}">
+                                        <i class="bi bi-person-lines-fill me-2"></i> Thông tin cá nhân
+                                    </a>
+                                </li>
+                                <li>
                                     <form action="{% url 'logout' %}" method="post">
                                         {% csrf_token %}
                                         <button class="dropdown-item text-danger" type="submit">Đăng xuất</button>
