@@ -16,4 +16,5 @@ urlpatterns = [
     path('loan/<int:pk>/action/<str:action>/', views.loan_action, name='loan_action'),
     path('loan/<int:pk>/edit/', views.edit_loan, name='edit_loan'),
     path('loan/<int:pk>/return/', views.return_loan, name='return_loan'),
+    path('profile/', views.profile, name='profile'), # <--- Thêm dòng này
 ]
