@@ -36,7 +36,7 @@ class RegistrationForm(UserCreationForm):
         help_text="Dùng để nhận thông báo và lấy lại mật khẩu."
     )
     first_name = forms.CharField(required=True, label="Tên")
-    last_name = forms.CharField(required=True, label="Họ đệm")
+    last_name = forms.CharField(required=True, label="Họ")
 
     class Meta(UserCreationForm.Meta):
         model = User
