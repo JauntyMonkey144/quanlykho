@@ -5,6 +5,8 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Submit, Row, Column
 from django.forms import inlineformset_factory
 from .models import LoanSlip, LoanItem, Employee, LoanImage
+from .models import UserProfile # Nhớ import model này
+
 # ==========================================
 # 1. WIDGET TÙY CHỈNH (UPLOAD NHIỀU ẢNH)
 # ==========================================
@@ -146,3 +148,26 @@ LoanItemFormSet = inlineformset_factory(
     can_delete=True,     # Cho phép xóa
     max_num=100  # <--- THÊM DÒNG NÀY để cho phép nhập tối đa 100 dòng
 )
+
+
+# === FORM CẬP NHẬT THÔNG TIN USER ===
+class UserUpdateForm(forms.ModelForm):
+    email = forms.EmailField(required=True, label="Email")
+    first_name = forms.CharField(required=True, label="Tên")
+    last_name = forms.CharField(required=True, label="Họ đệm")
+
+    class Meta:
+        model = User
+        fields = ['last_name', 'first_name', 'email']
+
+# === FORM CẬP NHẬT CHỮ KÝ (PROFILE) ===
+class ProfileUpdateForm(forms.ModelForm):
+    class Meta:
+        model = UserProfile
+        fields = ['signature']
+        labels = {
+            'signature': 'Ảnh chữ ký (Nền trong suốt)'
+        }
+    
+    # Sử dụng widget upload ảnh xịn xò mà ta đã làm (nếu muốn)
+    # Hoặc dùng mặc định cho đơn giản. Ở đây dùng mặc định của Crispy.
