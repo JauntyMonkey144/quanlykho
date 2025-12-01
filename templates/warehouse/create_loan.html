@@ -223,15 +223,21 @@ $(document).ready(function() {
         }
     });
 
-    function processExcel(file) {
+function processExcel(file) {
+        $('#excel-file-name').html(`<i class="bi bi-check-circle-fill"></i> ${file.name}`);
+        
         var reader = new FileReader();
         reader.onload = function(e) {
             var data = new Uint8Array(e.target.result);
-            var workbook = XLSX.read(data, {type: 'array'});
-            var jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
+            
+            // Thêm cellDates: true để đọc đúng định dạng ngày tháng
+            var workbook = XLSX.read(data, {type: 'array', cellDates: true});
+            
+            // raw: false để lấy giá trị hiển thị (string) thay vì số serial
+            var jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1, raw: false, dateNF: 'yyyy-mm-dd'});
             
             if (jsonData.length > 1 && confirm("Tìm thấy dữ liệu Excel. Tự động điền vào bảng?")) {
-                // Xóa dữ liệu trắng cũ nếu có
+                // Xóa dữ liệu trắng cũ
                 $('#form-body .item-row').each(function(){
                     var val = $(this).find('input[name$="-ten_tai_san"]').val();
                     if(!val) $(this).remove();
@@ -244,21 +250,52 @@ $(document).ready(function() {
                     $('#add-row').click();
                     var lastRow = $('#form-body .item-row').last();
                     
-                    // Mapping: 0-Ten, 1-DVT, 2-SL, 3-NgayMuon, 4-NgayTra, 5-TinhTrang, 6-GhiChu
+                    // Mapping cột: 0-Tên, 1-DVT, 2-SL, 3-NgàyMượn, 4-NgàyTrả, 5-TìnhTrạng, 6-GhiChu
                     lastRow.find('[name$="-ten_tai_san"]').val(row[0] || "");
                     lastRow.find('[name$="-don_vi_tinh"]').val(row[1] || "Cái");
                     lastRow.find('[name$="-so_luong"]').val(row[2] || 1);
                     
-                    // Xử lý Tình trạng
-                    var ttText = (row[5] || "").toLowerCase();
+                    // --- SỬA LỖI NGÀY THÁNG ---
+                    // Hàm chuyển đổi ngày: 31/12/2025 -> 2025-12-31
+                    function convertToInputDate(dateVal) {
+                        if (!dateVal) return "";
+                        
+                        // Nếu Excel trả về object Date (do cellDates: true)
+                        if (dateVal instanceof Date) {
+                            return dateVal.toISOString().split('T')[0];
+                        }
+                        
+                        // Nếu Excel trả về chuỗi text "31/12/2025"
+                        if (typeof dateVal === 'string' && dateVal.includes('/')) {
+                            var parts = dateVal.split('/');
+                            if (parts.length === 3) {
+                                // Đảo ngược thành Năm-Tháng-Ngày
+                                return `${parts[2]}-${parts[1]}-${parts[0]}`;
+                            }
+                        }
+                        
+                        // Nếu định dạng đã đúng hoặc kiểu khác
+                        return dateVal;
+                    }
+
+                    // Điền ngày đã chuyển đổi vào ô input
+                    lastRow.find('[name$="-ngay_muon"]').val(convertToInputDate(row[3]));
+                    lastRow.find('[name$="-ngay_tra_du_kien"]').val(convertToInputDate(row[4]));
+                    
+                    // --- SỬA LỖI TÌNH TRẠNG ---
+                    var ttText = (row[5] || "").toLowerCase().trim();
                     var ttVal = 'binh_thuong';
-                    if (ttText.includes('hư') || ttText.includes('hỏng')) ttVal = 'hu_hong';
-                    else if (ttText && !ttText.includes('bình thường')) {
+                    
+                    if (ttText.includes('hư') || ttText.includes('hỏng')) {
+                        ttVal = 'hu_hong';
+                    } else if (ttText && !ttText.includes('bình thường') && !ttText.includes('tốt')) {
                         ttVal = 'khac';
                         lastRow.find('.condition-other-wrapper').removeClass('d-none');
-                        lastRow.find('[name$="-tinh_trang_khac"]').val(row[5]);
+                        lastRow.find('[name$="-tinh_trang_khac"]').val(row[5]); // Điền nguyên văn nội dung
                     }
-                    lastRow.find('[name$="-tinh_trang"]').val(ttVal);
+                    
+                    // Gán giá trị dropdown và kích hoạt sự kiện change để hiện ô nhập (nếu là 'khac')
+                    lastRow.find('[name$="-tinh_trang"]').val(ttVal).trigger('change');
                     
                     lastRow.find('[name$="-ghi_chu"]').val(row[6] || "");
                 }
