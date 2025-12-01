@@ -11,7 +11,7 @@ from django.utils.safestring import mark_safe # <--- Để hiển thị HTML tro
 from django.urls import reverse               # <--- Để lấy đường dẫn URL
 import pandas as pd
 from weasyprint import HTML
-
+from .forms import UserUpdateForm, ProfileUpdateForm
 # Import Models và Forms
 from .models import LoanSlip, LoanImage, LoanItem, Employee, LoanHistory
 from .forms import LoanSlipForm, RegistrationForm, LoanItemFormSet, ReturnLoanForm
@@ -436,3 +436,24 @@ def export_loan_pdf(request, pk):
     response['Content-Disposition'] = f'inline; filename=phieu_{pk}.pdf'
     HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf(response)
     return response
+
+@login_required
+def profile(request):
+    if request.method == 'POST':
+        u_form = UserUpdateForm(request.POST, instance=request.user)
+        p_form = ProfileUpdateForm(request.POST, request.FILES, instance=request.user.profile)
+        
+        if u_form.is_valid() and p_form.is_valid():
+            u_form.save()
+            p_form.save()
+            messages.success(request, 'Tài khoản của bạn đã được cập nhật!')
+            return redirect('profile') # Load lại trang profile
+    else:
+        u_form = UserUpdateForm(instance=request.user)
+        p_form = ProfileUpdateForm(instance=request.user.profile)
+
+    context = {
+        'u_form': u_form,
+        'p_form': p_form
+    }
+    return render(request, 'warehouse/profile.html', context)
