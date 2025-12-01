@@ -177,11 +177,22 @@ def create_loan(request):
                         
                         db_status = 'binh_thuong'
                         db_status_other = ''
+
                         if pd.notna(raw_status):
-                            txt = str(raw_status).lower()
-                            if 'hư' in txt or 'hỏng' in txt: db_status = 'hu_hong'
-                            elif 'bình thường' not in txt and 'tốt' not in txt:
-                                db_status = 'khac'; db_status_other = str(raw_status)
+                            txt = str(raw_status).strip().lower()
+                            
+                            # 1. Check BÌNH THƯỜNG trước
+                            if any(k in txt for k in ['bình thường', 'tốt', 'mới', 'ok', 'good']):
+                                db_status = 'binh_thuong'
+                            
+                            # 2. Check HƯ HỎNG sau
+                            elif any(k in txt for k in ['hư', 'hỏng', 'lỗi', 'vỡ', 'bad']):
+                                db_status = 'hu_hong'
+                            
+                            # 3. Check KHÁC
+                            else:
+                                db_status = 'khac'
+                                db_status_other = str(raw_status).strip()
 
                         # 6. Ghi chú
                         col_gc = find_column(df, ['ghi', 'chú'])
@@ -342,11 +353,22 @@ def edit_loan(request, pk):
                         
                         db_status = 'binh_thuong'
                         db_status_other = ''
+
                         if pd.notna(raw_status):
-                            txt = str(raw_status).lower()
-                            if 'hư' in txt or 'hỏng' in txt: db_status = 'hu_hong'
-                            elif 'bình thường' not in txt and 'tốt' not in txt:
-                                db_status = 'khac'; db_status_other = str(raw_status)
+                            txt = str(raw_status).strip().lower()
+                            
+                            # 1. Check BÌNH THƯỜNG trước
+                            if any(k in txt for k in ['bình thường', 'tốt', 'mới', 'ok', 'good']):
+                                db_status = 'binh_thuong'
+                            
+                            # 2. Check HƯ HỎNG sau
+                            elif any(k in txt for k in ['hư', 'hỏng', 'lỗi', 'vỡ', 'bad']):
+                                db_status = 'hu_hong'
+                            
+                            # 3. Check KHÁC
+                            else:
+                                db_status = 'khac'
+                                db_status_other = str(raw_status).strip()
 
                         # 6. Ghi chú
                         col_gc = find_column(df, ['ghi', 'chú'])
