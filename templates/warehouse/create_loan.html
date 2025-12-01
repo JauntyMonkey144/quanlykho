@@ -259,17 +259,44 @@ $(document).ready(function() {
                     lastRow.find('[name$="-don_vi_tinh"]').val(row[1] || "Cái");
                     lastRow.find('[name$="-so_luong"]').val(row[2] || 1);
                     
-                    // Xử lý ngày tháng (Hàm chuyển đổi)
-                    function convertToInputDate(dateVal) {
-                        if (!dateVal) return "";
-                        if (dateVal instanceof Date) return dateVal.toISOString().split('T')[0];
-                        // Nếu là string dd/mm/yyyy -> yyyy-mm-dd
-                        if (typeof dateVal === 'string' && dateVal.includes('/')) {
-                            var parts = dateVal.split('/');
-                            if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+                    // --- HÀM CHUYỂN ĐỔI NGÀY "BẤT TỬ" (Chấp nhận mọi định dạng) ---
+                        function convertToInputDate(dateVal) {
+                            if (!dateVal) return "";
+                            
+                            // 1. Nếu SheetJS đã tự đọc ra là Object Date
+                            if (dateVal instanceof Date) {
+                                // Lấy ngày theo giờ địa phương (Tránh lỗi toISOString bị lùi 1 ngày do lệch múi giờ)
+                                var year = dateVal.getFullYear();
+                                var month = ("0" + (dateVal.getMonth() + 1)).slice(-2);
+                                var day = ("0" + dateVal.getDate()).slice(-2);
+                                return `${year}-${month}-${day}`;
+                            }
+                            
+                            // 2. Nếu là chuỗi ký tự (String)
+                            var strVal = String(dateVal).trim();
+                    
+                            // Trường hợp A: 31/12/2025 (Việt Nam - có dấu /)
+                            if (strVal.includes('/')) {
+                                var parts = strVal.split('/');
+                                if (parts.length === 3) {
+                                    // Đảo ngược thành Năm-Tháng-Ngày
+                                    // Thêm padStart để đảm bảo số 1 thành 01
+                                    var d = parts[0].padStart(2, '0');
+                                    var m = parts[1].padStart(2, '0');
+                                    var y = parts[2];
+                                    return `${y}-${m}-${d}`;
+                                }
+                            }
+                            
+                            // Trường hợp B: 2025-01-12 (Chuẩn ISO - có dấu -)
+                            if (strVal.includes('-')) {
+                                // Input date cần yyyy-mm-dd. 
+                                // Nếu chuỗi đã đúng chuẩn rồi thì trả về nguyên vẹn.
+                                return strVal;
+                            }
+                            
+                            return ""; // Không đọc được thì trả về rỗng
                         }
-                        return dateVal; // Trả về nguyên bản nếu không convert được
-                    }
 
                     lastRow.find('[name$="-ngay_muon"]').val(convertToInputDate(row[3]));
                     lastRow.find('[name$="-ngay_tra_du_kien"]').val(convertToInputDate(row[4]));
