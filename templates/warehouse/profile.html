@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Thông tin cá nhân{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm border-0 text-center h-100">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-circle" style="width: 100px; height: 100px; font-size: 40px;">
+                            {{ user.first_name|slice:":1"|upper }}
+                        </div>
+                    </div>
+                    <h4 class="fw-bold">{{ user.last_name }} {{ user.first_name }}</h4>
+                    <p class="text-muted mb-1">@{{ user.username }}</p>
+                    <p class="text-muted small">{{ user.email }}</p>
+                    
+                    <hr>
+                    
+                    <h6 class="fw-bold text-primary">Chữ ký hiện tại:</h6>
+                    <div class="border rounded p-2 bg-light d-flex align-items-center justify-content-center" style="height: 120px;">
+                        {% if user.profile.signature %}
+                            <img src="{{ user.profile.signature.url }}" class="img-fluid" style="max-height: 100px;">
+                        {% else %}
+                            <span class="text-muted fst-italic small">Chưa có chữ ký</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8 mb-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white fw-bold text-primary py-3">
+                    <i class="bi bi-gear-fill"></i> CẬP NHẬT THÔNG TIN
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <h6 class="text-muted text-uppercase small fw-bold mb-3">Thông tin cơ bản</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ u_form.last_name|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ u_form.first_name|as_crispy_field }}
+                            </div>
+                            <div class="col-md-12">
+                                {{ u_form.email|as_crispy_field }}
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <h6 class="text-muted text-uppercase small fw-bold mb-3">Chữ ký số (Dùng để in PDF)</h6>
+                        <div class="alert alert-info small">
+                            <i class="bi bi-info-circle"></i> Vui lòng upload ảnh chữ ký nền trong suốt (PNG) để hiển thị đẹp nhất trên phiếu in.
+                        </div>
+                        {{ p_form|crispy }}
+
+                        <div class="d-flex justify-content-end mt-4">
+                            <button type="submit" class="btn btn-success fw-bold px-4">
+                                <i class="bi bi-check-lg"></i> Lưu thay đổi
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
