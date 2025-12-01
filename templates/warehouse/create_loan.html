@@ -274,20 +274,26 @@ $(document).ready(function() {
                     lastRow.find('[name$="-ngay_muon"]').val(convertToInputDate(row[3]));
                     lastRow.find('[name$="-ngay_tra_du_kien"]').val(convertToInputDate(row[4]));
                     
-                    // --- XỬ LÝ TÌNH TRẠNG (THÔNG MINH) ---
+                    // Xử lý Tình trạng (SỬA LẠI)
                     var ttText = (row[5] || "").toLowerCase().trim();
                     var ttVal = 'binh_thuong';
                     
-                    if (ttText.includes('hư') || ttText.includes('hỏng')) {
+                    // 1. Check Bình thường trước
+                    if (ttText.includes('bình thường') || ttText.includes('tốt') || ttText.includes('ok')) {
+                        ttVal = 'binh_thuong';
+                    } 
+                    // 2. Check Hư hỏng sau
+                    else if (ttText.includes('hư') || ttText.includes('hỏng') || ttText.includes('lỗi')) {
                         ttVal = 'hu_hong';
-                    } else if (ttText && !ttText.includes('bình thường') && !ttText.includes('tốt') && !ttText.includes('ok')) {
-                        // Nếu nội dung không phải hư/tốt -> Chọn KHÁC và Điền text
+                    } 
+                    // 3. Check Khác
+                    else if (ttText.length > 0) {
                         ttVal = 'khac';
                         lastRow.find('.condition-other-wrapper').removeClass('d-none');
-                        lastRow.find('[name$="-tinh_trang_khac"]').val(row[5]); // Điền nội dung gốc từ Excel
+                        lastRow.find('[name$="-tinh_trang_khac"]').val(row[5]);
                     }
                     
-                    lastRow.find('[name$="-tinh_trang"]').val(ttVal);
+                    lastRow.find('[name$="-tinh_trang"]').val(ttVal).trigger('change');
                     // ---------------------------------------
                     
                     lastRow.find('[name$="-ghi_chu"]').val(row[6] || "");
