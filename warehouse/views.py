@@ -97,53 +97,92 @@ def create_loan(request):
                 loan=loan, user=request.user, action="Tạo mới", note=f"Lý do: {loan.ly_do}"
             )
 
-            # --- 2. XỬ LÝ IMPORT EXCEL ---
+# ==========================================
+            # 1. XỬ LÝ IMPORT EXCEL (BẢN NÂNG CẤP FIX LỖI)
+            # ==========================================
             excel_file = request.FILES.get('excel_file')
             if excel_file:
                 try:
+                    # Đọc file
                     df = pd.read_excel(excel_file)
+                    # Chuẩn hóa tên cột: Chữ thường + Xóa khoảng trắng thừa
                     df.columns = df.columns.str.strip().str.lower()
                     
+                    # Hàm phụ: Xử lý ngày tháng "thông minh" hơn
+                    def parse_excel_date(val, default_date=None):
+                        if pd.isna(val) or str(val).strip() == '':
+                            return default_date
+                        try:
+                            # Ưu tiên đọc ngày dạng DD/MM/YYYY (Việt Nam)
+                            return pd.to_datetime(val, dayfirst=True).date()
+                        except:
+                            try:
+                                # Nếu lỗi, thử để máy tự đoán format khác
+                                return pd.to_datetime(val).date()
+                            except:
+                                return default_date
+
                     for index, row in df.iterrows():
-                        ten = row.get('tên tài sản/thiết bị') or row.get('tên tài sản') or row.get('tên')
+                        # --- 1. Tên tài sản ---
+                        # Thử nhiều biến thể tên cột
+                        ten = row.get('tên tài sản') or row.get('tên tài sản/thiết bị') or row.get('tên')
                         if pd.isna(ten) or str(ten).strip() == '': continue
 
-                        dvt = row.get('đơn vị tính') or row.get('dvt') or 'Cái'
-                        sl = row.get('số lượng') or row.get('sl') or 1
-                        try: sl = int(sl) 
+                        # --- 2. ĐVT & SL ---
+                        dvt = row.get('đơn vị tính') or row.get('đvt')
+                        if pd.isna(dvt): dvt = 'Cái'
+
+                        sl = row.get('số lượng') or row.get('sl')
+                        try: sl = int(sl) if pd.notna(sl) else 1
                         except: sl = 1
 
-                        # Xử lý ngày tháng
-                        ngay_muon_val = timezone.now().date()
-                        if pd.notna(row.get('ngày mượn')):
-                            try: ngay_muon_val = pd.to_datetime(row.get('ngày mượn'), dayfirst=True).date()
-                            except: pass
+                        # --- 3. XỬ LÝ NGÀY THÁNG (FIX LỖI) ---
+                        
+                        # Ngày mượn: Nếu Excel trống -> Lấy ngày hiện tại
+                        ngay_muon_excel = row.get('ngày mượn')
+                        ngay_muon_val = parse_excel_date(ngay_muon_excel, default_date=timezone.now().date())
 
-                        ngay_tra_val = None
-                        if pd.notna(row.get('ngày trả dự kiến')):
-                            try: ngay_tra_val = pd.to_datetime(row.get('ngày trả dự kiến'), dayfirst=True).date()
-                            except: pass
+                        # Ngày trả: Bắt đúng tên cột trong file của bạn ("ngày trả dự kiến")
+                        ngay_tra_excel = row.get('ngày trả dự kiến') or row.get('ngày trả')
+                        ngay_tra_val = parse_excel_date(ngay_tra_excel, default_date=None)
 
-                        # Xử lý tình trạng
-                        raw_status = row.get('tình trạng')
+                        # --- 4. XỬ LÝ TÌNH TRẠNG (FIX LỖI) ---
+                        raw_status = row.get('tình trạng') or row.get('tinh trang')
                         db_status = 'binh_thuong'
                         db_status_other = ''
+
                         if pd.notna(raw_status):
-                            text = str(raw_status).lower()
-                            if 'hư' in text or 'hỏng' in text: db_status = 'hu_hong'
-                            elif 'bình thường' not in text and 'tốt' not in text:
+                            # Chuyển hết về chữ thường để so sánh
+                            txt = str(raw_status).strip().lower()
+                            
+                            # Logic "Bắt dính" từ khóa
+                            if any(x in txt for x in ['hư', 'hỏng', 'lỗi', 'vỡ', 'bad', 'broken']):
+                                db_status = 'hu_hong'
+                            elif any(x in txt for x in ['bình thường', 'tốt', 'mới', 'ok', 'good', 'new']):
+                                db_status = 'binh_thuong'
+                            else:
+                                # Nếu không khớp 2 loại trên -> Cho vào Khác
                                 db_status = 'khac'
-                                db_status_other = str(raw_status)
+                                db_status_other = str(raw_status).strip()
 
-                        ghi_chu = row.get('ghi chú') or ''
+                        # --- 5. Ghi chú ---
+                        ghi_chu = row.get('ghi chú')
+                        if pd.isna(ghi_chu): ghi_chu = ''
 
+                        # TẠO ITEM
                         LoanItem.objects.create(
-                            loan=loan, ten_tai_san=ten, don_vi_tinh=dvt, so_luong=sl,
-                            ngay_muon=ngay_muon_val, ngay_tra_du_kien=ngay_tra_val,
-                            tinh_trang=db_status, tinh_trang_khac=db_status_other, ghi_chu=ghi_chu
+                            loan=loan,
+                            ten_tai_san=ten,
+                            don_vi_tinh=dvt,
+                            so_luong=sl,
+                            ngay_muon=ngay_muon_val,
+                            ngay_tra_du_kien=ngay_tra_val,
+                            tinh_trang=db_status,
+                            tinh_trang_khac=db_status_other,
+                            ghi_chu=ghi_chu
                         )
                 except Exception as e:
-                    messages.warning(request, f"Lỗi Excel: {e}")
+                    messages.warning(request, f"Lỗi nhập Excel: {e}")
 
             # --- 3. XỬ LÝ FORMSET ---
             if item_formset.is_valid():
