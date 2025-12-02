@@ -65,12 +65,7 @@ class RegistrationForm(UserCreationForm):
 # 3. FORM TẠO PHIẾU MƯỢN (LoanSlipForm)
 # ==========================================
 class LoanSlipForm(forms.ModelForm):
-    # --- THÊM TRƯỜNG ẢO NÀY (Không lưu vào Model LoanSlip) ---
-    ngay_tra_chung = forms.DateField(
-        label="Ngày trả dự kiến (Áp dụng cho tất cả)",
-        required=False, # Không bắt buộc (để người dùng có thể nhập lẻ nếu muốn)
-        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control border-warning'})
-    )
+
     
     # Field ảo: Import Excel
     excel_file = forms.FileField(
@@ -86,13 +81,15 @@ class LoanSlipForm(forms.ModelForm):
 
     class Meta:
         model = LoanSlip  # <--- Đây là chỗ bị lỗi nếu thiếu import
-        fields = ['ma_nhan_vien', 'nguoi_muon', 'email', 'chuc_vu', 'phong_ban','ly_do', 'ghi_chu']
+        fields = ['ma_nhan_vien', 'nguoi_muon', 'email', 'chuc_vu', 'ngay_muon', 'ngay_tra_du_kien', 'phong_ban','ly_do', 'ghi_chu']
         widgets = {
             'nguoi_muon': forms.TextInput(attrs={'readonly': 'readonly'}),
             'email': forms.TextInput(attrs={'readonly': 'readonly'}),
             'chuc_vu': forms.TextInput(attrs={'readonly': 'readonly'}),
             'phong_ban': forms.TextInput(attrs={'readonly': 'readonly'}),
             'ly_do': forms.Textarea(attrs={'rows': 3}),
+            'ngay_muon': forms.DateInput(attrs={'type': 'date'}),
+            'ngay_tra_du_kien': forms.DateInput(attrs={'type': 'date'}), # Thêm widget
         }
         # --- 1. KIỂM TRA MÃ NHÂN VIÊN ---
     def clean_ma_nhan_vien(self):
@@ -108,11 +105,9 @@ class LoanItemForm(forms.ModelForm):
     class Meta:
         model = LoanItem
         # Thêm tinh_trang và tinh_trang_khac vào fields
-        fields = ['ten_tai_san', 'don_vi_tinh', 'so_luong', 'ngay_muon', 'ngay_tra_du_kien', 'tinh_trang', 'tinh_trang_khac', 'ghi_chu']
+        fields = ['ten_tai_san', 'don_vi_tinh', 'so_luong', 'tinh_trang', 'tinh_trang_khac', 'ghi_chu']
         
         widgets = {
-            'ngay_muon': forms.DateInput(attrs={'type': 'date', 'readonly': False}),            
-            'ngay_tra_du_kien': forms.DateInput(attrs={'type': 'date'}),
             # Thêm class để Javascript bắt sự kiện
             'tinh_trang': forms.Select(attrs={'class': 'form-select condition-select form-select-sm'}),
             'tinh_trang_khac': forms.TextInput(attrs={'class': 'form-control condition-input form-control-sm', 'placeholder': 'Nhập tình trạng...'}),
