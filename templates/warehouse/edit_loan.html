@@ -106,7 +106,15 @@ $(document).ready(function() {
         var totalForms = $('#id_items-TOTAL_FORMS');
         var formIdx = parseInt(totalForms.val());
         var newRow = $('#empty-form-template').html().replace(/__prefix__/g, formIdx);
-        $('#form-body').append(newRow);
+        var $newRowObj = $(newRow); // Tạo đối tượng jQuery
+        
+        // Nếu đang có ngày trả chung, điền luôn vào dòng mới
+        var commonDate = $('#id_ngay_tra_chung').val();
+        if (commonDate) {
+            $newRowObj.find('[name$="-ngay_tra_du_kien"]').val(commonDate);
+        }
+
+        $('#form-body').append($newRowObj);
         totalForms.val(formIdx + 1);
         updateRowIndices();
         $('.condition-select').trigger('change');
@@ -171,7 +179,14 @@ $(document).ready(function() {
         input.files = dt.files;
         renderPreview();
     });
-
+    
+    $('#id_ngay_tra_chung').on('change', function() {
+        var commonDate = $(this).val();
+        if (commonDate) {
+            // Tìm tất cả các ô input ngày trả trong bảng và gán giá trị
+            $('[name$="-ngay_tra_du_kien"]').val(commonDate);
+        }
+    });
 // =========================================================
     // 5. EXCEL PREVIEW & DELETE (LOGIC NGÀY THÁNG SIÊU MẠNH)
     // =========================================================
