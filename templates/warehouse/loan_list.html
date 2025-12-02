@@ -1,214 +1,56 @@
 {% extends "base.html" %}
-{% load auth_extras %}
 
-{% block title %}Chi tiết Phiếu #{{ loan.id }}{% endblock %}
+{% block title %}Danh Sách Phiếu Mượn{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-10">
-        <div class="mb-3">
-            <a href="{% url 'loan_list' %}" class="text-decoration-none text-muted">
-                <i class="bi bi-arrow-left"></i> Quay lại danh sách
-            </a>
-        </div>
-
-        <div class="card mb-4 border-0 shadow-sm">
-            <div class="card-body">
-                <h5 class="fw-bold text-{{ loan.status_color }} mb-3">
-                    TRẠNG THÁI: {{ loan.get_status_display|upper }}
-                </h5>
-                
-                <div class="d-flex gap-2 flex-wrap">
-                    {% if loan.status == 'draft' or loan.status == 'rejected' %}
-                        {% if user == loan.created_by or user.is_superuser %}
-                            <a href="{% url 'loan_action' loan.id 'send' %}" class="btn btn-primary"><i class="bi bi-send"></i> Gửi duyệt</a>
-                            <a href="{% url 'edit_loan' loan.id %}" class="btn btn-warning text-dark fw-bold"><i class="bi bi-pencil"></i> Sửa phiếu</a>
-                        {% endif %}
-                    {% endif %}
-
-                    {% if loan.status == 'dept_pending' %}
-                        {% if request.user|has_group:"TruongPhong" or user.is_superuser %}
-                            <a href="{% url 'loan_action' loan.id 'dept_approve' %}" class="btn btn-info text-white fw-bold"><i class="bi bi-check-circle"></i> TP Duyệt</a>
-                            <a href="{% url 'loan_action' loan.id 'reject' %}" class="btn btn-outline-danger">Từ chối</a>
-                        {% else %}
-                            <span class="badge bg-secondary p-2 align-self-center">Chờ Trưởng phòng duyệt</span>
-                        {% endif %}
-                    {% endif %}
-
-                    {% if loan.status == 'director_pending' %}
-                        {% if request.user|has_group:"GiamDoc" or user.is_superuser %}
-                            <a href="{% url 'loan_action' loan.id 'director_approve' %}" class="btn btn-primary fw-bold"><i class="bi bi-check-circle-fill"></i> GĐ Duyệt</a>
-                            <a href="{% url 'loan_action' loan.id 'reject' %}" class="btn btn-outline-danger">Từ chối</a>
-                        {% else %}
-                            <span class="badge bg-secondary p-2 align-self-center">Chờ Giám đốc duyệt</span>
-                        {% endif %}
-                    {% endif %}
-
-                    {% if loan.status == 'warehouse_pending' %}
-                        {% if request.user|has_group:"ThuKho" or user.is_superuser %}
-                            <a href="{% url 'loan_action' loan.id 'warehouse_export' %}" class="btn btn-warning fw-bold"><i class="bi bi-box-seam"></i> Xuất Kho</a>
-                        {% else %}
-                            <span class="badge bg-secondary p-2 align-self-center">Chờ Kho xuất</span>
-                        {% endif %}
-                    {% endif %}
-
-                    {% if loan.status == 'returning' %}
-                        {% if request.user|has_group:"ThuKho" or user.is_superuser %}
-                            <a href="{% url 'loan_action' loan.id 'warehouse_confirm' %}" class="btn btn-success fw-bold"><i class="bi bi-check-all"></i> Xác nhận Đã Nhận</a>
-                        {% else %}
-                            <span class="badge bg-secondary p-2 align-self-center">Chờ Kho kiểm tra</span>
-                        {% endif %}
-                    {% endif %}
-
-                    {% if loan.status == 'borrowing' %}
-                        {% if user == loan.created_by or request.user|has_group:"ThuKho" or user.is_superuser %}
-                            <a href="{% url 'return_loan' loan.id %}" class="btn btn-danger text-white fw-bold"><i class="bi bi-arrow-return-left"></i> Yêu cầu Trả Hàng</a>
-                        {% endif %}
-                    {% endif %}
-                    
-                    <a href="{% url 'export_loan_pdf' loan.id %}" class="btn btn-dark ms-auto" target="_blank"><i class="bi bi-printer"></i> In PDF</a>
-                </div>
-            </div>
-        </div>
-
-        <div class="card shadow-sm mb-4">
-            <div class="card-header bg-light fw-bold">I. THÔNG TIN CHUNG</div>
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="text-muted small">Số phiếu</label>
-                        <div class="fw-bold">#{{ loan.id|stringformat:"04d" }}</div>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="text-muted small">Người mượn</label>
-                        <div class="fw-bold">{{ loan.nguoi_muon }} <span class="text-muted fw-normal">({{ loan.ma_nhan_vien }})</span></div>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="text-muted small">Phòng ban</label>
-                        <div class="fw-bold">{{ loan.phong_ban }}</div>
-                    </div>
-                    
-                    <div class="col-md-4">
-                        <label class="text-muted small">Ngày mượn</label>
-                        <div class="fw-bold text-primary">{{ loan.ngay_muon|date:"d/m/Y" }}</div>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="text-muted small">Ngày trả dự kiến</label>
-                        <div class="fw-bold text-danger">{{ loan.ngay_tra_du_kien|date:"d/m/Y"|default:"--" }}</div>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="text-muted small">Ngày trả thực tế</label>
-                        <div class="fw-bold text-success">{{ loan.ngay_tra_thuc_te|date:"d/m/Y"|default:"Chưa trả" }}</div>
-                    </div>
-
-                    <div class="col-md-12">
-                        <label class="text-muted small">Lý do</label>
-                        <div>{{ loan.ly_do }}</div>
-                    </div>
-                    <div class="col-md-12">
-                        <label class="text-muted small">Ghi chú chung</label>
-                        <div class="fst-italic">{{ loan.ghi_chu|default:"Không có" }}</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="card shadow-sm">
-            <div class="card-header bg-light fw-bold">II. DANH SÁCH VẬT TƯ</div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-bordered mb-0 align-middle text-nowrap">
-                        <thead class="bg-light text-center">
-                            <tr>
-                                <th width="5%">STT</th>
-                                <th width="35%">Tên tài sản</th>
-                                <th width="10%">ĐVT</th>
-                                <th width="10%">Số lượng</th>
-                                <th width="20%">Tình trạng</th>
-                                <th width="20%">Ghi chú</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in loan.items.all %}
-                            <tr>
-                                <td class="text-center fw-bold">{{ forloop.counter }}</td>
-                                <td>{{ item.ten_tai_san }}</td>
-                                <td class="text-center">{{ item.don_vi_tinh }}</td>
-                                <td class="text-center">{{ item.so_luong }}</td>
-                                
-                                <td class="text-center">
-                                    {% if item.tinh_trang == 'khac' %}
-                                        {{ item.tinh_trang_khac }}
-                                    {% else %}
-                                        {{ item.get_tinh_trang_display }}
-                                    {% endif %}
-                                </td>
-                                
-                                <td>{{ item.ghi_chu|default:"" }}</td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="6" class="text-center text-muted py-3">Không có vật tư nào.</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        
-        {% if loan.images.all %}
-        <div class="card mt-4 shadow-sm">
-            <div class="card-header bg-light fw-bold">HÌNH ẢNH ĐÍNH KÈM</div>
-            <div class="card-body">
-                <div class="d-flex flex-wrap gap-3">
-                    {% for img in loan.images.all %}
-                    <div class="border rounded p-2 text-center bg-white">
-                        <img src="{{ img.image.url }}" style="height: 150px; width: auto; object-fit: contain;" class="rounded">
-                        <div class="mt-2">
-                            {% if img.image_type == 'borrow' %}
-                                <span class="badge bg-primary">Ảnh mượn</span>
-                            {% else %}
-                                <span class="badge bg-danger">Ảnh trả</span>
-                            {% endif %}
-                        </div>
-                        <div class="small text-muted mt-1">{{ img.uploaded_at|date:"d/m H:i" }}</div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-        {% endif %}
-
-        <div class="card mt-4 mb-4 border-0 shadow-sm">
-            <div class="card-header bg-light fw-bold"><i class="bi bi-clock-history"></i> NHẬT KÝ HOẠT ĐỘNG</div>
-            <div class="card-body">
-                <ul class="timeline list-unstyled mb-0">
-                    {% for log in loan.history.all|dictsort:"timestamp" %}
-                    <li class="timeline-item pb-3 border-bottom mb-3">
-                        <div class="d-flex justify-content-between">
-                            <strong class="text-primary">{{ log.action }}</strong>
-                            <span class="text-muted small">{{ log.timestamp|date:"H:i d/m/Y" }}</span>
-                        </div>
-                        <p class="mb-0 small text-muted">
-                            Người thực hiện: {{ log.user.last_name }} {{ log.user.first_name }} ({{ log.user.username }})
-                        </p>
-                        {% if log.note %}
-                        <p class="mb-0 small fst-italic text-dark mt-1">"{{ log.note }}"</p>
-                        {% endif %}
-                    </li>
+<div class="card shadow-sm">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h4 class="mb-0 text-primary fw-bold"><i class="bi bi-list-check"></i> DANH SÁCH PHIẾU MƯỢN</h4>
+        <a href="{% url 'create_loan' %}" class="btn btn-success fw-bold"><i class="bi bi-plus-lg"></i> Tạo mới</a>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle text-nowrap">
+                <thead class="bg-light">
+                    <tr>
+                        <th>Mã Phiếu</th>
+                        <th>Người mượn</th>
+                        <th>Phòng ban</th>
+                        <th>Ngày tạo</th>
+                        <th>Trạng thái</th>
+                        <th class="text-center">Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for loan in loans %}
+                    <tr>
+                        <td class="fw-bold">#{{ loan.id|stringformat:"04d" }}</td>
+                        <td>
+                            <div class="fw-bold">{{ loan.nguoi_muon }}</div>
+                            <small class="text-muted">{{ loan.ma_nhan_vien }}</small>
+                        </td>
+                        <td>{{ loan.phong_ban }}</td>
+                        <td>{{ loan.ngay_tao|date:"d/m/Y" }}</td>
+                        
+                        <td>
+                            <span class="badge bg-{{ loan.status_color }} px-3 py-2 rounded-pill">
+                                {{ loan.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <a href="{% url 'loan_detail' loan.id %}" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-eye"></i> Xem & Duyệt
+                            </a>
+                        </td>
+                    </tr>
                     {% empty %}
-                    <li class="text-muted">Chưa có lịch sử.</li>
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-muted">Chưa có phiếu, vui lòng tạo mới.</td>
+                    </tr>
                     {% endfor %}
-                </ul>
-            </div>
+                </tbody>
+            </table>
         </div>
-
     </div>
 </div>
-
-<style>
-    /* Ẩn border dòng cuối cùng của timeline */
-    .timeline-item:last-child { border-bottom: none !important; margin-bottom: 0 !important; padding-bottom: 0 !important; }
-</style>
 {% endblock %}
