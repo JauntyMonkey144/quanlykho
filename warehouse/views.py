@@ -274,7 +274,7 @@ def edit_loan(request, pk):
             
             # Ghi nhật ký
             LoanHistory.objects.create(loan=loan, user=request.user, action="Cập nhật phiếu", note="Chỉnh sửa thông tin")
-
+            common_return_date = form.cleaned_data.get('ngay_tra_chung')
 # ==========================================
             # XỬ LÝ IMPORT EXCEL (BẢN NÂNG CẤP TÌM CỘT THÔNG MINH)
             # ==========================================
@@ -348,7 +348,9 @@ def edit_loan(request, pk):
                         
                         if col_ngay_tra:
                             ngay_tra_val = parse_date(row.get(col_ngay_tra), default_val=None)
-
+                        if not ngay_tra_val and common_return_date:
+                            ngay_tra_val = common_return_date
+                            
                         # 5. Tình trạng
                         col_tt = find_column(df, ['tình', 'trạng'])
                         raw_status = row.get(col_tt) if col_tt else None
