@@ -551,7 +551,7 @@ def loan_action(request, pk, action):
 
         loan.status = 'rejected'
         loan.ngay_tu_choi = timezone.now()
-        history_action = f"Từ chối ({user.username})"
+        history_action = f"Từ chối"
         recipients = user_email
         msg = "Phiếu bị từ chối."
 
