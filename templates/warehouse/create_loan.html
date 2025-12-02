@@ -261,45 +261,47 @@ $(document).ready(function() {
                     if(!$(this).find('input[name$="-id"]').val()) $(this).remove();
                 });
 
-                for (var i = 1; i < jsonData.length; i++) {
+            for (var i = 1; i < jsonData.length; i++) {
                     var row = jsonData[i];
                     if (!row || row.length === 0) continue;
 
                     $('#add-row').click();
                     var lastRow = $('#form-body .item-row').last();
                     
-                    // Mapping cột: 0-Ten, 1-DVT, 2-SL, 3-NgayMuon, 4-NgayTra, 5-TinhTrang, 6-GhiChu
+                    // Mapping cột theo thứ tự file Excel mới
+                    // Giả sử: Tên(0), ĐVT(1), SL(2), Tình trạng(3), Ghi chú(4)
+                    // (Vì đã bỏ 2 cột ngày ở giữa)
+                    
+                    // Nếu bạn dùng file mẫu cũ (vẫn có cột ngày nhưng bỏ trống) thì index có thể khác.
+                    // Code dưới đây giả định file Excel CŨNG ĐÃ XÓA cột ngày.
+                    
                     lastRow.find('[name$="-ten_tai_san"]').val(row[0] || "");
                     lastRow.find('[name$="-don_vi_tinh"]').val(row[1] || "Cái");
                     lastRow.find('[name$="-so_luong"]').val(row[2] || 1);
                     
-                    // Xử lý Ngày
-                    var dMuon = safeDate(row[3]);
-                    if (!dMuon) { // Nếu trống lấy hôm nay
-                        let now = new Date();
-                        dMuon = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')}`;
-                    }
-                    var dTra = safeDate(row[4]);
+                    // --- ĐÃ XÓA LOGIC NGÀY THÁNG Ở ĐÂY ---
 
-                    lastRow.find('[name$="-ngay_muon"]').val(dMuon);
-                    lastRow.find('[name$="-ngay_tra_du_kien"]').val(dTra);
+                    // Xử lý Tình trạng (Cột index sẽ thay đổi nếu xóa cột ngày)
+                    // Nếu file Excel CÓ xóa cột ngày -> Tình trạng là cột 3
+                    // Nếu file Excel VẪN CÒN cột ngày -> Tình trạng là cột 5
+                    // Hãy kiểm tra file Excel của bạn. 
+                    // Dưới đây giả định file Excel VẪN CÒN cột ngày nhưng ta lờ đi -> Index vẫn là 5
+                    var rawStatus = row[3] || ""; // Hoặc row[3] nếu file excel đã xóa cột ngày
+                    var ttText = rawStatus.toLowerCase().trim();
                     
-                    // Xử lý Tình trạng (Logic Ưu tiên Bình thường)
-                    var ttText = (row[5] || "").toLowerCase().trim();
                     var ttVal = 'binh_thuong';
-                    
-                    if (ttText.includes('bình thường') || ttText.includes('tốt') || ttText.includes('ok') || ttText.includes('mới')) {
+                    if (ttText.includes('bình thường') || ttText.includes('tốt') || ttText.includes('ok')) {
                         ttVal = 'binh_thuong';
-                    } else if (ttText.includes('hư') || ttText.includes('hỏng') || ttText.includes('lỗi') || ttText.includes('vỡ')) {
+                    } else if (ttText.includes('hư') || ttText.includes('hỏng')) {
                         ttVal = 'hu_hong';
                     } else if (ttText.length > 0) {
                         ttVal = 'khac';
                         lastRow.find('.condition-other-wrapper').removeClass('d-none');
-                        lastRow.find('[name$="-tinh_trang_khac"]').val(row[5]);
+                        lastRow.find('[name$="-tinh_trang_khac"]').val(rawStatus);
                     }
                     lastRow.find('[name$="-tinh_trang"]').val(ttVal);
                     
-                    lastRow.find('[name$="-ghi_chu"]').val(row[6] || "");
+                    lastRow.find('[name$="-ghi_chu"]').val(row[4] || ""); // Hoặc row[4] nếu xóa cột ngày
                 }
             }
         };
