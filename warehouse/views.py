@@ -97,49 +97,28 @@ def create_loan(request):
                 loan=loan, user=request.user, action="Tạo mới", note=f"Lý do: {loan.ly_do}"
             )
 
-# ==========================================
-            # XỬ LÝ IMPORT EXCEL (BẢN NÂNG CẤP TÌM CỘT THÔNG MINH)
+            # ==========================================
+            # 1. XỬ LÝ IMPORT EXCEL (GỌN NHẸ - KHÔNG CẦN NGÀY THÁNG)
             # ==========================================
             excel_file = request.FILES.get('excel_file')
             if excel_file:
                 try:
                     df = pd.read_excel(excel_file)
-                    # Chuẩn hóa tên cột: Chữ thường + Xóa khoảng trắng
                     df.columns = df.columns.str.strip().str.lower()
                     
-                    print(">>> CÁC CỘT TÌM THẤY:", df.columns.tolist()) # Xem log để debug
-
-                    # --- HÀM TÌM TÊN CỘT LINH HOẠT ---
+                    # Hàm tìm tên cột linh hoạt
                     def find_column(df, keywords):
-                        """Tìm tên cột trong df chứa tất cả từ khóa"""
                         for col in df.columns:
-                            # Kiểm tra xem tên cột có chứa TẤT CẢ từ khóa không
-                            if all(key in col for key in keywords):
-                                return col
+                            if all(key in col for key in keywords): return col
                         return None
 
-                    # --- HÀM XỬ LÝ NGÀY THÁNG ---
-                    def parse_date(val, default_val):
-                        if pd.isna(val) or str(val).strip() == '':
-                            return default_val
-                        try:
-                            # Thử đọc ngày Việt Nam (dd/mm/yyyy)
-                            return pd.to_datetime(val, dayfirst=True).date()
-                        except:
-                            try:
-                                # Thử đọc ngày Quốc tế (yyyy-mm-dd)
-                                return pd.to_datetime(val).date()
-                            except:
-                                return default_val
-
                     for index, row in df.iterrows():
-                        # 1. Tên tài sản (Tìm cột có chữ 'tên' và 'tài sản' hoặc 'thiết bị')
+                        # 1. Tên tài sản
                         col_ten = find_column(df, ['tên']) 
                         ten = row.get(col_ten) if col_ten else None
-                        
                         if pd.isna(ten) or str(ten).strip() == '': continue
 
-                        # 2. ĐVT & Số lượng
+                        # 2. ĐVT & SL
                         col_dvt = find_column(df, ['đơn', 'vị']) or find_column(df, ['dvt'])
                         dvt = row.get(col_dvt) if col_dvt else 'Cái'
 
@@ -148,73 +127,43 @@ def create_loan(request):
                         try: sl = int(sl)
                         except: sl = 1
 
-                        # --- 3. XỬ LÝ NGÀY MƯỢN (QUAN TRỌNG) ---
-                        # Tìm cột nào có chữ 'ngày' VÀ 'mượn'
-                        col_ngay_muon = find_column(df, ['ngày', 'mượn'])
-                        
-                        # Giá trị mặc định: Ngày hôm nay
-                        today = timezone.now().date()
-                        
-                        if col_ngay_muon:
-                            raw_date = row.get(col_ngay_muon)
-                            ngay_muon_val = parse_date(raw_date, default_val=today)
-                            print(f"-> Dòng {index}: Tìm thấy cột '{col_ngay_muon}', Giá trị gốc: '{raw_date}', Kết quả: {ngay_muon_val}")
-                        else:
-                            print(f"-> Dòng {index}: KHÔNG tìm thấy cột Ngày mượn -> Lấy hôm nay.")
-                            ngay_muon_val = today
+                        # --- ĐÃ XÓA BỎ ĐOẠN XỬ LÝ NGÀY THÁNG Ở ĐÂY ---
 
-                        # --- 4. XỬ LÝ NGÀY TRẢ ---
-                        # Tìm cột có chữ 'ngày' VÀ 'trả'
-                        col_ngay_tra = find_column(df, ['ngày', 'trả'])
-                        ngay_tra_val = None
-                        # 2. Nếu Excel không có -> Lấy ngày trả chung trên form
-                        if not ngay_tra_val and common_return_date:
-                            ngay_tra_val = common_return_date
-                        if col_ngay_tra:
-                            ngay_tra_val = parse_date(row.get(col_ngay_tra), default_val=None)
-
-                        # 5. Tình trạng
+                        # 3. Tình trạng
                         col_tt = find_column(df, ['tình', 'trạng'])
                         raw_status = row.get(col_tt) if col_tt else None
                         
                         db_status = 'binh_thuong'
                         db_status_other = ''
-
                         if pd.notna(raw_status):
-                            txt = str(raw_status).strip().lower()
-                            
-                            # 1. Check BÌNH THƯỜNG trước
-                            if any(k in txt for k in ['bình thường', 'tốt', 'mới', 'ok', 'good']):
+                            txt = str(raw_status).lower()
+                            # Ưu tiên Bình thường
+                            if any(k in txt for k in ['bình thường', 'tốt', 'mới', 'ok']):
                                 db_status = 'binh_thuong'
-                            
-                            # 2. Check HƯ HỎNG sau
-                            elif any(k in txt for k in ['hư', 'hỏng', 'lỗi', 'vỡ', 'bad']):
+                            # Check Hư hỏng
+                            elif any(k in txt for k in ['hư', 'hỏng', 'lỗi', 'vỡ']):
                                 db_status = 'hu_hong'
-                            
-                            # 3. Check KHÁC
+                            # Còn lại là Khác
                             else:
-                                db_status = 'khac'
-                                db_status_other = str(raw_status).strip()
+                                db_status = 'khac'; db_status_other = str(raw_status).strip()
 
-                        # 6. Ghi chú
+                        # 4. Ghi chú
                         col_gc = find_column(df, ['ghi', 'chú'])
                         ghi_chu = row.get(col_gc) if col_gc else ''
 
-                        # TẠO DỮ LIỆU
+                        # TẠO DÒNG DỮ LIỆU (KHÔNG TRUYỀN NGÀY VÀO ITEM NỮA)
                         LoanItem.objects.create(
                             loan=loan,
                             ten_tai_san=ten,
                             don_vi_tinh=dvt,
                             so_luong=sl,
-                            # ngay_muon=ngay_muon_val,      # <--- Đã sửa
-                            # ngay_tra_du_kien=ngay_tra_val,
+                            # ngay_muon=... (ĐÃ XÓA)
+                            # ngay_tra=...  (ĐÃ XÓA)
                             tinh_trang=db_status,
                             tinh_trang_khac=db_status_other,
                             ghi_chu=ghi_chu
                         )
-
                 except Exception as e:
-                    print(f"❌ Lỗi Excel: {e}")
                     messages.warning(request, f"Lỗi Excel: {e}")
 
             
@@ -274,50 +223,29 @@ def edit_loan(request, pk):
             
             # Ghi nhật ký
             LoanHistory.objects.create(loan=loan, user=request.user, action="Cập nhật phiếu", note="Chỉnh sửa thông tin")
-            common_return_date = form.cleaned_data.get('ngay_tra_chung')
-# ==========================================
-            # XỬ LÝ IMPORT EXCEL (BẢN NÂNG CẤP TÌM CỘT THÔNG MINH)
+
+            # ==========================================
+            # 1. XỬ LÝ IMPORT EXCEL (GỌN NHẸ - KHÔNG CẦN NGÀY THÁNG)
             # ==========================================
             excel_file = request.FILES.get('excel_file')
             if excel_file:
                 try:
                     df = pd.read_excel(excel_file)
-                    # Chuẩn hóa tên cột: Chữ thường + Xóa khoảng trắng
                     df.columns = df.columns.str.strip().str.lower()
                     
-                    print(">>> CÁC CỘT TÌM THẤY:", df.columns.tolist()) # Xem log để debug
-
-                    # --- HÀM TÌM TÊN CỘT LINH HOẠT ---
+                    # Hàm tìm tên cột linh hoạt
                     def find_column(df, keywords):
-                        """Tìm tên cột trong df chứa tất cả từ khóa"""
                         for col in df.columns:
-                            # Kiểm tra xem tên cột có chứa TẤT CẢ từ khóa không
-                            if all(key in col for key in keywords):
-                                return col
+                            if all(key in col for key in keywords): return col
                         return None
 
-                    # --- HÀM XỬ LÝ NGÀY THÁNG ---
-                    def parse_date(val, default_val):
-                        if pd.isna(val) or str(val).strip() == '':
-                            return default_val
-                        try:
-                            # Thử đọc ngày Việt Nam (dd/mm/yyyy)
-                            return pd.to_datetime(val, dayfirst=True).date()
-                        except:
-                            try:
-                                # Thử đọc ngày Quốc tế (yyyy-mm-dd)
-                                return pd.to_datetime(val).date()
-                            except:
-                                return default_val
-
                     for index, row in df.iterrows():
-                        # 1. Tên tài sản (Tìm cột có chữ 'tên' và 'tài sản' hoặc 'thiết bị')
+                        # 1. Tên tài sản
                         col_ten = find_column(df, ['tên']) 
                         ten = row.get(col_ten) if col_ten else None
-                        
                         if pd.isna(ten) or str(ten).strip() == '': continue
 
-                        # 2. ĐVT & Số lượng
+                        # 2. ĐVT & SL
                         col_dvt = find_column(df, ['đơn', 'vị']) or find_column(df, ['dvt'])
                         dvt = row.get(col_dvt) if col_dvt else 'Cái'
 
@@ -326,73 +254,43 @@ def edit_loan(request, pk):
                         try: sl = int(sl)
                         except: sl = 1
 
-                        # --- 3. XỬ LÝ NGÀY MƯỢN (QUAN TRỌNG) ---
-                        # Tìm cột nào có chữ 'ngày' VÀ 'mượn'
-                        col_ngay_muon = find_column(df, ['ngày', 'mượn'])
-                        
-                        # Giá trị mặc định: Ngày hôm nay
-                        today = timezone.now().date()
-                        
-                        if col_ngay_muon:
-                            raw_date = row.get(col_ngay_muon)
-                            ngay_muon_val = parse_date(raw_date, default_val=today)
-                            print(f"-> Dòng {index}: Tìm thấy cột '{col_ngay_muon}', Giá trị gốc: '{raw_date}', Kết quả: {ngay_muon_val}")
-                        else:
-                            print(f"-> Dòng {index}: KHÔNG tìm thấy cột Ngày mượn -> Lấy hôm nay.")
-                            ngay_muon_val = today
+                        # --- ĐÃ XÓA BỎ ĐOẠN XỬ LÝ NGÀY THÁNG Ở ĐÂY ---
 
-                        # --- 4. XỬ LÝ NGÀY TRẢ ---
-                        # Tìm cột có chữ 'ngày' VÀ 'trả'
-                        col_ngay_tra = find_column(df, ['ngày', 'trả'])
-                        ngay_tra_val = None
-                        
-                        if col_ngay_tra:
-                            ngay_tra_val = parse_date(row.get(col_ngay_tra), default_val=None)
-                        if not ngay_tra_val and common_return_date:
-                            ngay_tra_val = common_return_date
-                            
-                        # 5. Tình trạng
+                        # 3. Tình trạng
                         col_tt = find_column(df, ['tình', 'trạng'])
                         raw_status = row.get(col_tt) if col_tt else None
                         
                         db_status = 'binh_thuong'
                         db_status_other = ''
-
                         if pd.notna(raw_status):
-                            txt = str(raw_status).strip().lower()
-                            
-                            # 1. Check BÌNH THƯỜNG trước
-                            if any(k in txt for k in ['bình thường', 'tốt', 'mới', 'ok', 'good']):
+                            txt = str(raw_status).lower()
+                            # Ưu tiên Bình thường
+                            if any(k in txt for k in ['bình thường', 'tốt', 'mới', 'ok']):
                                 db_status = 'binh_thuong'
-                            
-                            # 2. Check HƯ HỎNG sau
-                            elif any(k in txt for k in ['hư', 'hỏng', 'lỗi', 'vỡ', 'bad']):
+                            # Check Hư hỏng
+                            elif any(k in txt for k in ['hư', 'hỏng', 'lỗi', 'vỡ']):
                                 db_status = 'hu_hong'
-                            
-                            # 3. Check KHÁC
+                            # Còn lại là Khác
                             else:
-                                db_status = 'khac'
-                                db_status_other = str(raw_status).strip()
+                                db_status = 'khac'; db_status_other = str(raw_status).strip()
 
-                        # 6. Ghi chú
+                        # 4. Ghi chú
                         col_gc = find_column(df, ['ghi', 'chú'])
                         ghi_chu = row.get(col_gc) if col_gc else ''
 
-                        # TẠO DỮ LIỆU
+                        # TẠO DÒNG DỮ LIỆU (KHÔNG TRUYỀN NGÀY VÀO ITEM NỮA)
                         LoanItem.objects.create(
                             loan=loan,
                             ten_tai_san=ten,
                             don_vi_tinh=dvt,
                             so_luong=sl,
-                            # ngay_muon=ngay_muon_val,      # <--- Đã sửa
-                            # ngay_tra_du_kien=ngay_tra_val,
+                            # ngay_muon=... (ĐÃ XÓA)
+                            # ngay_tra=...  (ĐÃ XÓA)
                             tinh_trang=db_status,
                             tinh_trang_khac=db_status_other,
                             ghi_chu=ghi_chu
                         )
-
                 except Exception as e:
-                    print(f"❌ Lỗi Excel: {e}")
                     messages.warning(request, f"Lỗi Excel: {e}")
             
             # Xử lý Formset
