@@ -26,10 +26,13 @@
 
 {% block extra_js %}
 <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
 <script>
 $(document).ready(function() {
 
-    // 1. AUTOCOMPLETE NHÂN VIÊN (Giữ nguyên)
+    // =========================================================
+    // 1. AUTOCOMPLETE NHÂN VIÊN
+    // =========================================================
     var searchInput = $('#id_ma_nhan_vien');
     var suggestionBox = $('#suggestion-box');
 
@@ -56,7 +59,7 @@ $(document).ready(function() {
                     });
                     suggestionBox.html(html).show();
                 } else {
-                    suggestionBox.html('<div class="list-group-item text-muted text-center">Không tìm thấy.</div>').show();
+                    suggestionBox.html('<div class="list-group-item text-muted text-center">Không tìm thấy nhân viên.</div>').show();
                 }
             }
         });
@@ -79,14 +82,15 @@ $(document).ready(function() {
         }
     });
 
-    // 2. TÌNH TRẠNG (LOGIC ẨN/HIỆN Ô KHÁC)
+    // =========================================================
+    // 2. TÌNH TRẠNG (ẨN/HIỆN Ô NHẬP "KHÁC")
+    // =========================================================
     $(document).on('change', '.condition-select', function() {
         var val = $(this).val();
         var div = $(this).siblings('.condition-other-wrapper');
         if (val === 'khac') { 
             div.removeClass('d-none'); 
-            // Chỉ focus nếu ô đang trống để tránh khó chịu khi load dữ liệu
-            if(div.find('input').val() === "") div.find('input').focus(); 
+            if(div.find('input').val() === "") div.find('input').focus();
         } else { 
             div.addClass('d-none'); 
             div.find('input').val(''); 
@@ -95,26 +99,20 @@ $(document).ready(function() {
     // Kích hoạt ngay khi load trang
     $('.condition-select').trigger('change');
 
+    // =========================================================
     // 3. FORMSET (THÊM/XÓA DÒNG)
+    // =========================================================
     function updateRowIndices() {
         $('#items-table .item-row:visible').each(function(index) {
             $(this).find('.row-index').text(index + 1);
         });
     }
-
+    
     $('#add-row').click(function() {
         var totalForms = $('#id_items-TOTAL_FORMS');
         var formIdx = parseInt(totalForms.val());
         var newRow = $('#empty-form-template').html().replace(/__prefix__/g, formIdx);
-        var $newRowObj = $(newRow); // Tạo đối tượng jQuery
-        
-        // Nếu đang có ngày trả chung, điền luôn vào dòng mới
-        var commonDate = $('#id_ngay_tra_chung').val();
-        if (commonDate) {
-            $newRowObj.find('[name$="-ngay_tra_du_kien"]').val(commonDate);
-        }
-
-        $('#form-body').append($newRowObj);
+        $('#form-body').append(newRow);
         totalForms.val(formIdx + 1);
         updateRowIndices();
         $('.condition-select').trigger('change');
@@ -123,15 +121,19 @@ $(document).ready(function() {
     $(document).on('click', '.delete-row', function() {
         var row = $(this).closest('tr');
         if (row.find('input[name$="-id"]').val()) {
+            // Dòng cũ -> Ẩn và tick Delete
             row.find('input[name$="-DELETE"]').prop('checked', true);
             row.hide();
         } else {
+            // Dòng mới -> Xóa hẳn
             row.remove();
         }
         updateRowIndices();
     });
 
+    // =========================================================
     // 4. UPLOAD ẢNH (KÉO THẢ & XÓA)
+    // =========================================================
     const dt = new DataTransfer();
     const input = document.getElementById('id_photos');
     const dropZone = $('#drop-zone');
@@ -179,23 +181,21 @@ $(document).ready(function() {
         input.files = dt.files;
         renderPreview();
     });
-    
-    $('#id_ngay_tra_chung').on('change', function() {
-        var commonDate = $(this).val();
-        if (commonDate) {
-            // Tìm tất cả các ô input ngày trả trong bảng và gán giá trị
-            $('[name$="-ngay_tra_du_kien"]').val(commonDate);
-        }
-    });
-// =========================================================
-    // 5. EXCEL PREVIEW & DELETE (LOGIC NGÀY THÁNG SIÊU MẠNH)
+
+    // =========================================================
+    // 5. EXCEL IMPORT (ĐÃ FIX LỖI NGÀY & TÌNH TRẠNG)
     // =========================================================
     const excelInput = document.getElementById('id_excel_file');
     const excelZone = $('#excel-drop-zone');
     const excelNameDisplay = $('#excel-file-name');
 
     $('#btn-select-excel').on('click', function(e) { e.stopPropagation(); $(excelInput).click(); });
-    excelZone.on('click', function(e) { if (!$(e.target).is(excelInput) && !$(e.target).closest('#btn-remove-excel').length) $(excelInput).click(); });
+    excelZone.on('click', function(e) { 
+        if (!$(e.target).is(excelInput) && !$(e.target).closest('#btn-remove-excel').length) {
+            $(excelInput).click(); 
+        }
+    });
+
     excelZone.on('dragover', function(e) { e.preventDefault(); e.stopPropagation(); $(this).addClass('drag-over-excel'); });
     excelZone.on('dragleave drop', function(e) { e.preventDefault(); e.stopPropagation(); $(this).removeClass('drag-over-excel'); });
 
@@ -207,57 +207,49 @@ $(document).ready(function() {
     });
 
     function handleExcelFile(file) {
-        if (!file.name.match(/\.(xls|xlsx)$/)) { alert("Vui lòng chỉ chọn file Excel!"); return; }
+        if (!file.name.match(/\.(xls|xlsx)$/)) { alert("Vui lòng chỉ chọn file Excel (.xls, .xlsx)"); return; }
         const dtEx = new DataTransfer(); dtEx.items.add(file); excelInput.files = dtEx.files;
-        excelNameDisplay.html(`<div class="d-flex align-items-center justify-content-center gap-2 p-2 bg-success bg-opacity-10 rounded mt-2 border border-success"><span class="text-success fw-bold"><i class="bi bi-file-earmark-excel-fill"></i> ${file.name}</span><a href="javascript:void(0)" id="btn-remove-excel" class="text-danger text-decoration-none fw-bold px-2" title="Xóa"><i class="bi bi-x-lg"></i></a></div>`);
+        excelNameDisplay.html(`
+            <div class="d-flex align-items-center justify-content-center gap-2 p-2 bg-success bg-opacity-10 rounded mt-2 border border-success">
+                <span class="text-success fw-bold"><i class="bi bi-file-earmark-excel-fill"></i> ${file.name}</span>
+                <a href="javascript:void(0)" id="btn-remove-excel" class="text-danger text-decoration-none fw-bold px-2" title="Xóa file này">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+            </div>`);
         processExcel(file);
     }
 
     $(document).on('click', '#btn-remove-excel', function(e) {
         e.preventDefault(); e.stopPropagation();
         $(excelInput).val(''); excelNameDisplay.html('');
-        if(confirm("Xóa dữ liệu Excel trong bảng?")) {
-             $('#form-body .item-row').not('#empty-form-template .item-row').each(function(){ if(!$(this).find('input[name$="-id"]').val()) $(this).remove(); });
+        if(confirm("Bạn có muốn xóa các dòng dữ liệu đã import từ Excel không?")) {
+             $('#form-body .item-row').not('#empty-form-template .item-row').each(function(){
+                 if(!$(this).find('input[name$="-id"]').val()) $(this).remove();
+             });
              if($('#form-body .item-row:visible').length === 0) $('#add-row').click();
              updateRowIndices();
         }
     });
 
-    // --- HÀM XỬ LÝ NGÀY "BẤT TỬ" ---
+    // --- HÀM XỬ LÝ NGÀY MẠNH MẼ ---
     function safeDate(val) {
         if (!val) return "";
-        
-        // 1. Nếu là Object Date (SheetJS tự parse)
+        // 1. Nếu là Object Date
         if (val instanceof Date) {
-            // Lấy ngày/tháng/năm theo giờ địa phương để tránh lỗi lệch múi giờ UTC
             let y = val.getFullYear();
             let m = (val.getMonth() + 1).toString().padStart(2, '0');
             let d = val.getDate().toString().padStart(2, '0');
             return `${y}-${m}-${d}`;
         }
-
-        // 2. Nếu là chuỗi text
+        // 2. Nếu là chuỗi
         let s = String(val).trim();
-        
-        // Trường hợp A: 2025-01-12 hoặc 2025/01/12 (Năm trước)
-        // Regex bắt: 4 số - 1 hoặc 2 số - 1 hoặc 2 số
+        // A: 2025-01-12 (ISO)
         let matchISO = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
-        if (matchISO) {
-            let y = matchISO[1];
-            let m = matchISO[2].padStart(2, '0'); // Thêm số 0 nếu thiếu (1 -> 01)
-            let d = matchISO[3].padStart(2, '0');
-            return `${y}-${m}-${d}`;
-        }
-
-        // Trường hợp B: 31/12/2025 hoặc 31-12-2025 (Ngày trước)
+        if (matchISO) return `${matchISO[1]}-${matchISO[2].padStart(2,'0')}-${matchISO[3].padStart(2,'0')}`;
+        // B: 31/12/2025 (VN)
         let matchVN = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
-        if (matchVN) {
-            let d = matchVN[1].padStart(2, '0');
-            let m = matchVN[2].padStart(2, '0');
-            let y = matchVN[3];
-            return `${y}-${m}-${d}`;
-        }
-
+        if (matchVN) return `${matchVN[3]}-${matchVN[2].padStart(2,'0')}-${matchVN[1].padStart(2,'0')}`;
+        
         return ""; // Không đọc được
     }
 
@@ -265,11 +257,11 @@ $(document).ready(function() {
         var reader = new FileReader();
         reader.onload = function(e) {
             var data = new Uint8Array(e.target.result);
-            // cellDates: true để SheetJS cố gắng đọc format ngày của Excel
             var workbook = XLSX.read(data, {type: 'array', cellDates: true});
             var jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
             
-            if (jsonData.length > 1 && confirm("Tự động điền dữ liệu vào bảng?")) {
+            if (jsonData.length > 1 && confirm("Tìm thấy dữ liệu Excel. Tự động điền vào bảng?")) {
+                // Xóa dữ liệu mới cũ
                 $('#form-body .item-row').not('#empty-form-template .item-row').each(function(){
                     if(!$(this).find('input[name$="-id"]').val()) $(this).remove();
                 });
@@ -281,45 +273,36 @@ $(document).ready(function() {
                     $('#add-row').click();
                     var lastRow = $('#form-body .item-row').last();
                     
-                    // Mapping
+                    // Mapping cột: 0-Ten, 1-DVT, 2-SL, 3-NgayMuon, 4-NgayTra, 5-TinhTrang, 6-GhiChu
                     lastRow.find('[name$="-ten_tai_san"]').val(row[0] || "");
                     lastRow.find('[name$="-don_vi_tinh"]').val(row[1] || "Cái");
                     lastRow.find('[name$="-so_luong"]').val(row[2] || 1);
                     
-                    // --- DÙNG HÀM NGÀY MỚI ---
+                    // Xử lý Ngày
                     var dMuon = safeDate(row[3]);
-                    var dTra = safeDate(row[4]);
-                    
-                    // Nếu ngày mượn trống -> Lấy ngày hôm nay
-                    if (!dMuon) {
+                    if (!dMuon) { // Nếu trống lấy hôm nay
                         let now = new Date();
                         dMuon = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')}`;
                     }
-                    
+                    var dTra = safeDate(row[4]);
+
                     lastRow.find('[name$="-ngay_muon"]').val(dMuon);
                     lastRow.find('[name$="-ngay_tra_du_kien"]').val(dTra);
                     
-// --- SỬA LỖI LOGIC TÌNH TRẠNG ---
+                    // Xử lý Tình trạng (Logic Ưu tiên Bình thường)
                     var ttText = (row[5] || "").toLowerCase().trim();
-                    var ttVal = 'binh_thuong'; // Mặc định
+                    var ttVal = 'binh_thuong';
                     
-                    // 1. ƯU TIÊN KIỂM TRA "BÌNH THƯỜNG" TRƯỚC
-                    // (Để tránh chữ "hư" trong "bình thường" bị bắt nhầm)
                     if (ttText.includes('bình thường') || ttText.includes('tốt') || ttText.includes('ok') || ttText.includes('mới')) {
                         ttVal = 'binh_thuong';
-                    } 
-                    // 2. SAU ĐÓ MỚI KIỂM TRA HƯ HỎNG
-                    else if (ttText.includes('hư') || ttText.includes('hỏng') || ttText.includes('lỗi') || ttText.includes('vỡ')) {
+                    } else if (ttText.includes('hư') || ttText.includes('hỏng') || ttText.includes('lỗi') || ttText.includes('vỡ')) {
                         ttVal = 'hu_hong';
-                    } 
-                    // 3. CÒN LẠI LÀ KHÁC
-                    else if (ttText.length > 0) {
+                    } else if (ttText.length > 0) {
                         ttVal = 'khac';
                         lastRow.find('.condition-other-wrapper').removeClass('d-none');
                         lastRow.find('[name$="-tinh_trang_khac"]').val(row[5]);
                     }
-                    
-                    lastRow.find('[name$="-tinh_trang"]').val(ttVal).trigger('change');
+                    lastRow.find('[name$="-tinh_trang"]').val(ttVal);
                     
                     lastRow.find('[name$="-ghi_chu"]').val(row[6] || "");
                 }
