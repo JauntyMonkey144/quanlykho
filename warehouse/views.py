@@ -206,8 +206,8 @@ def create_loan(request):
                             ten_tai_san=ten,
                             don_vi_tinh=dvt,
                             so_luong=sl,
-                            ngay_muon=ngay_muon_val,      # <--- Đã sửa
-                            ngay_tra_du_kien=ngay_tra_val,
+                            # ngay_muon=ngay_muon_val,      # <--- Đã sửa
+                            # ngay_tra_du_kien=ngay_tra_val,
                             tinh_trang=db_status,
                             tinh_trang_khac=db_status_other,
                             ghi_chu=ghi_chu
@@ -384,8 +384,8 @@ def edit_loan(request, pk):
                             ten_tai_san=ten,
                             don_vi_tinh=dvt,
                             so_luong=sl,
-                            ngay_muon=ngay_muon_val,      # <--- Đã sửa
-                            ngay_tra_du_kien=ngay_tra_val,
+                            # ngay_muon=ngay_muon_val,      # <--- Đã sửa
+                            # ngay_tra_du_kien=ngay_tra_val,
                             tinh_trang=db_status,
                             tinh_trang_khac=db_status_other,
                             ghi_chu=ghi_chu
