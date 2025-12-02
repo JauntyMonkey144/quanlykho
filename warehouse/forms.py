@@ -65,6 +65,13 @@ class RegistrationForm(UserCreationForm):
 # 3. FORM TẠO PHIẾU MƯỢN (LoanSlipForm)
 # ==========================================
 class LoanSlipForm(forms.ModelForm):
+    # --- THÊM TRƯỜNG ẢO NÀY (Không lưu vào Model LoanSlip) ---
+    ngay_tra_chung = forms.DateField(
+        label="Ngày trả dự kiến (Áp dụng cho tất cả)",
+        required=False, # Không bắt buộc (để người dùng có thể nhập lẻ nếu muốn)
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control border-warning'})
+    )
+    
     # Field ảo: Import Excel
     excel_file = forms.FileField(
         label="Import Excel (Tên, ĐVT, SL)", required=False,
