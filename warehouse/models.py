@@ -35,7 +35,9 @@ class LoanSlip(models.Model):
     
     ly_do = models.TextField("Lý do mượn")
     ghi_chu = models.TextField("Ghi chú", blank=True, null=True)    
-    
+        # Ngày mượn và Trả nằm ở đây (Khớp với Excel)
+    ngay_muon = models.DateField("Ngày mượn", default=timezone.now)
+    ngay_tra_du_kien = models.DateField("Ngày trả dự kiến", null=True, blank=True)
     ngay_tao = models.DateTimeField(auto_now_add=True)
     
     # Lưu ý: Không còn ngay_muon ở đây (đã chuyển sang LoanItem)
@@ -84,9 +86,7 @@ class LoanItem(models.Model):
     don_vi_tinh = models.CharField("Đơn vị tính", max_length=50)
     so_luong = models.IntegerField("Số lượng", default=1)
     
-    # Ngày mượn và Trả nằm ở đây (Khớp với Excel)
-    ngay_muon = models.DateField("Ngày mượn", default=timezone.now)
-    ngay_tra_du_kien = models.DateField("Ngày trả dự kiến", null=True, blank=True)
+
     
     TINH_TRANG_CHOICES = (
         ('binh_thuong', 'Bình thường'),
