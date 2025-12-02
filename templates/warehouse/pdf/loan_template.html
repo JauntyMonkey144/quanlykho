@@ -155,15 +155,6 @@
         </tbody>
     </table>
 
-    {% if loan.images.all %}
-    <div class="images-section">
-        <div style="margin-bottom:5px;"><strong>Hình ảnh đính kèm:</strong></div>
-        {% for img in loan.images.all %}
-            <div class="img-box"><img src="file://{{ img.image.path }}"></div>
-        {% endfor %}
-    </div>
-    {% endif %}
-
     <div class="footer-section">
         <div style="text-align: right; margin-bottom: 10px; font-style: italic;">
             Tp. Hồ Chí Minh, ngày {% now "d" %} tháng {% now "m" %} năm {% now "Y" %}
