@@ -30,8 +30,10 @@
         <div class="row">
             <div class="col-md-12">{{ form.ly_do|as_crispy_field }}</div>
             <div class="col-md-6">
-                {{ form.ngay_tra_chung|as_crispy_field }}
-                <small class="text-muted fst-italic">* Chọn ngày này để tự động điền cho tất cả hàng hóa bên dưới.</small>
+                {{ form.ngay_muon|as_crispy_field }}
+            </div>
+            <div class="col-md-6">
+                {{ form.ngay_tra_du_kien|as_crispy_field }}
             </div>
             <div class="col-md-12">{{ form.ghi_chu|as_crispy_field }}</div>
         </div>
@@ -120,12 +122,10 @@
                 <thead class="bg-light text-center">
                     <tr>
                         <th width="5%">STT</th>
-                        <th width="25%">Tên tài sản <span class="text-danger">*</span></th>
-                        <th width="10%">ĐVT</th>
-                        <th width="10%">SL</th>
-                        <th width="12%">Ngày mượn</th>
-                        <th width="12%">Ngày trả dự kiến</th>
-                        <th width="15%">Tình trạng</th>
+                        <th width="35%">Tên tài sản <span class="text-danger">*</span></th>
+                        <th width="10%">Đơn vị tính</th>
+                        <th width="10%">Số lượng</th>
+                        <th width="20%">Tình trạng</th>
                         <th width="15%">Ghi chú</th>
                         <th width="5%"><i class="bi bi-trash3"></i></th>
                     </tr>
@@ -140,8 +140,6 @@
                             <td>{{ form.ten_tai_san|as_crispy_field }}</td>
                             <td>{{ form.don_vi_tinh|as_crispy_field }}</td>
                             <td>{{ form.so_luong|as_crispy_field }}</td>
-                            <td>{{ form.ngay_muon|as_crispy_field }}</td>
-                            <td>{{ form.ngay_tra_du_kien|as_crispy_field }}</td>
                             <td>
                                 {{ form.tinh_trang|as_crispy_field }}
                                 <div class="mt-1 condition-other-wrapper {% if form.tinh_trang.value != 'khac' %}d-none{% endif %}">
@@ -170,8 +168,6 @@
             <td>{{ item_formset.empty_form.ten_tai_san|as_crispy_field }}</td>
             <td>{{ item_formset.empty_form.don_vi_tinh|as_crispy_field }}</td>
             <td>{{ item_formset.empty_form.so_luong|as_crispy_field }}</td>
-            <td>{{ item_formset.empty_form.ngay_muon|as_crispy_field }}</td>
-            <td>{{ item_formset.empty_form.ngay_tra_du_kien|as_crispy_field }}</td>
             <td>
                 {{ item_formset.empty_form.tinh_trang|as_crispy_field }}
                 <div class="mt-1 condition-other-wrapper d-none">
