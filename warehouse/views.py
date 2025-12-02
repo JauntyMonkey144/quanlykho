@@ -91,7 +91,7 @@ def create_loan(request):
             loan = form.save(commit=False)
             loan.created_by = request.user
             loan.save()
-            
+            common_return_date = form.cleaned_data.get('ngay_tra_chung')
             # --- 1. GHI NHẬT KÝ ---
             LoanHistory.objects.create(
                 loan=loan, user=request.user, action="Tạo mới", note=f"Lý do: {loan.ly_do}"
@@ -167,7 +167,9 @@ def create_loan(request):
                         # Tìm cột có chữ 'ngày' VÀ 'trả'
                         col_ngay_tra = find_column(df, ['ngày', 'trả'])
                         ngay_tra_val = None
-                        
+                        # 2. Nếu Excel không có -> Lấy ngày trả chung trên form
+                        if not ngay_tra_val and common_return_date:
+                            ngay_tra_val = common_return_date
                         if col_ngay_tra:
                             ngay_tra_val = parse_date(row.get(col_ngay_tra), default_val=None)
 
