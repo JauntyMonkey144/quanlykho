@@ -329,8 +329,62 @@ def edit_loan(request, pk):
 
 @login_required
 def loan_list(request):
-    loans = LoanSlip.objects.all().order_by('-id')
-    return render(request, 'warehouse/loan_list.html', {'loans': loans})
+    # 1. Lấy danh sách gốc
+    loans = LoanSlip.objects.all()
+
+    # 2. --- XỬ LÝ BỘ LỌC (SEARCH & FILTER) ---
+    
+    # Tìm kiếm từ khóa (Mã phiếu, Người mượn, Mã NV)
+    search_query = request.GET.get('q', '')
+    if search_query:
+        loans = loans.filter(
+            Q(id__icontains=search_query) |
+            Q(nguoi_muon__icontains=search_query) |
+            Q(ma_nhan_vien__icontains=search_query)
+        )
+
+    # Lọc theo Trạng thái
+    status_filter = request.GET.get('status', '')
+    if status_filter:
+        loans = loans.filter(status=status_filter)
+
+    # Lọc theo Phòng ban
+    dept_filter = request.GET.get('dept', '')
+    if dept_filter:
+        loans = loans.filter(phong_ban__icontains=dept_filter)
+
+    # Lọc theo Ngày tạo (Từ ngày - Đến ngày)
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
+    if date_from:
+        loans = loans.filter(ngay_tao__date__gte=date_from)
+    if date_to:
+        loans = loans.filter(ngay_tao__date__lte=date_to)
+
+    # 3. --- XỬ LÝ SẮP XẾP (SORTING) ---
+    sort_by = request.GET.get('sort', '-id') # Mặc định là ID giảm dần (Mới nhất lên đầu)
+    
+    # Kiểm tra xem field có hợp lệ không để tránh lỗi
+    valid_sort_fields = ['id', 'nguoi_muon', 'phong_ban', 'ngay_tao', 'ngay_tra_du_kien', 'status']
+    
+    # Xử lý dấu trừ (-) cho giảm dần
+    clean_sort = sort_by.lstrip('-')
+    if clean_sort in valid_sort_fields:
+        loans = loans.order_by(sort_by)
+
+    # 4. Trả về kết quả
+    context = {
+        'loans': loans,
+        # Truyền lại các giá trị filter để hiển thị trên form
+        'status_choices': LoanSlip.STATUS_CHOICES,
+        'current_status': status_filter,
+        'current_search': search_query,
+        'current_dept': dept_filter,
+        'current_date_from': date_from,
+        'current_date_to': date_to,
+        'current_sort': sort_by
+    }
+    return render(request, 'warehouse/loan_list.html', context)
 
 @login_required
 def loan_detail(request, pk):
