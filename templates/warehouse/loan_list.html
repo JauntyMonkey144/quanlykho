@@ -1,56 +1,167 @@
 {% extends "base.html" %}
-
-{% block title %}Danh Sách Phiếu Mượn{% endblock %}
+{% load auth_extras %}
+{% load url_extras %} {% block title %}Danh Sách Phiếu Mượn{% endblock %}
 
 {% block content %}
-<div class="card shadow-sm">
-    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-        <h4 class="mb-0 text-primary fw-bold"><i class="bi bi-list-check"></i> DANH SÁCH PHIẾU MƯỢN</h4>
-        <a href="{% url 'create_loan' %}" class="btn btn-success fw-bold"><i class="bi bi-plus-lg"></i> Tạo mới</a>
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-white py-3">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="mb-0 text-primary fw-bold"><i class="bi bi-list-check"></i> DANH SÁCH PHIẾU MƯỢN</h4>
+            <a href="{% url 'create_loan' %}" class="btn btn-success fw-bold shadow-sm">
+                <i class="bi bi-plus-lg"></i> Tạo phiếu mới
+            </a>
+        </div>
+
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="small text-muted fw-bold">Tìm kiếm</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                    <input type="text" name="q" class="form-control" placeholder="Mã phiếu, Tên, Mã NV..." value="{{ current_search }}">
+                </div>
+            </div>
+
+            <div class="col-md-2">
+                <label class="small text-muted fw-bold">Phòng ban</label>
+                <input type="text" name="dept" class="form-control" placeholder="Nhập phòng..." value="{{ current_dept }}">
+            </div>
+
+            <div class="col-md-3">
+                <label class="small text-muted fw-bold">Trạng thái</label>
+                <select name="status" class="form-select">
+                    <option value="">-- Tất cả trạng thái --</option>
+                    {% for code, label in status_choices %}
+                        <option value="{{ code }}" {% if current_status == code %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <label class="small text-muted fw-bold">Từ ngày</label>
+                <input type="date" name="date_from" class="form-control" value="{{ current_date_from }}">
+            </div>
+            <div class="col-md-2">
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Lọc dữ liệu</button>
+                </div>
+            </div>
+        </form>
     </div>
+
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-hover mb-0 align-middle text-nowrap">
                 <thead class="bg-light">
                     <tr>
-                        <th>Mã Phiếu</th>
-                        <th>Người mượn</th>
-                        <th>Phòng ban</th>
-                        <th>Ngày tạo</th>
-                        <th>Trạng thái</th>
+                        <th>
+                            <a href="?{% param_replace sort='id' %}" class="text-decoration-none text-dark d-block">
+                                Mã Phiếu 
+                                {% if current_sort == 'id' %}<i class="bi bi-sort-numeric-down-alt text-primary"></i>
+                                {% elif current_sort == '-id' %}<i class="bi bi-sort-numeric-down text-primary"></i>
+                                {% else %}<i class="bi bi-arrow-down-up text-muted small"></i>{% endif %}
+                            </a>
+                        </th>
+                        
+                        <th>
+                            <a href="?{% param_replace sort='nguoi_muon' %}" class="text-decoration-none text-dark d-block">
+                                Người mượn
+                                {% if 'nguoi_muon' in current_sort %}<i class="bi bi-sort-alpha-down text-primary"></i>{% endif %}
+                            </a>
+                        </th>
+                        
+                        <th>
+                            <a href="?{% param_replace sort='phong_ban' %}" class="text-decoration-none text-dark d-block">
+                                Phòng ban
+                                {% if 'phong_ban' in current_sort %}<i class="bi bi-sort-alpha-down text-primary"></i>{% endif %}
+                            </a>
+                        </th>
+                        
+                        <th>
+                            <a href="?{% param_replace sort='ngay_tao' %}" class="text-decoration-none text-dark d-block">
+                                Ngày tạo
+                                {% if current_sort == 'ngay_tao' %}<i class="bi bi-sort-down text-primary"></i>
+                                {% elif current_sort == '-ngay_tao' %}<i class="bi bi-sort-down-alt text-primary"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+
+                        <th>Ngày trả DK</th>
+                        
+                        <th>
+                            <a href="?{% param_replace sort='status' %}" class="text-decoration-none text-dark d-block">
+                                Trạng thái
+                                {% if 'status' in current_sort %}<i class="bi bi-sort-alpha-down text-primary"></i>{% endif %}
+                            </a>
+                        </th>
+                        
                         <th class="text-center">Hành động</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for loan in loans %}
                     <tr>
-                        <td class="fw-bold">#{{ loan.id|stringformat:"04d" }}</td>
+                        <td class="fw-bold text-primary">
+                            <a href="{% url 'loan_detail' loan.id %}" class="text-decoration-none">#{{ loan.id|stringformat:"04d" }}</a>
+                        </td>
                         <td>
                             <div class="fw-bold">{{ loan.nguoi_muon }}</div>
                             <small class="text-muted">{{ loan.ma_nhan_vien }}</small>
                         </td>
                         <td>{{ loan.phong_ban }}</td>
-                        <td>{{ loan.ngay_tao|date:"d/m/Y" }}</td>
-                        
+                        <td>{{ loan.ngay_tao|date:"d/m/Y H:i" }}</td>
+                        <td>{{ loan.ngay_tra_du_kien|date:"d/m/Y"|default:"--" }}</td>
                         <td>
-                            <span class="badge bg-{{ loan.status_color }} px-3 py-2 rounded-pill">
+                            <span class="badge bg-{{ loan.status_color }} px-3 py-2 rounded-pill border border-{{ loan.status_color }} bg-opacity-10 text-{{ loan.status_color }}">
                                 {{ loan.get_status_display }}
                             </span>
                         </td>
                         <td class="text-center">
-                            <a href="{% url 'loan_detail' loan.id %}" class="btn btn-outline-primary btn-sm">
-                                <i class="bi bi-eye"></i> Xem & Duyệt
+                            <a href="{% url 'loan_detail' loan.id %}" class="btn btn-sm btn-outline-secondary border-0" title="Xem chi tiết">
+                                <i class="bi bi-eye-fill fs-5"></i>
                             </a>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="text-center py-4 text-muted">Chưa có phiếu, vui lòng tạo mới.</td>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                            Không tìm thấy phiếu nào phù hợp.
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
+    <div class="card-footer bg-white py-3">
+        <small class="text-muted">Hiển thị <strong>{{ loans.count }}</strong> kết quả.</small>
+    </div>
 </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Lấy tham số sort hiện tại từ URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentSort = urlParams.get('sort') || '-id';
+
+        // Gắn sự kiện click cho các thẻ a trong thead
+        document.querySelectorAll('thead th a').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const href = new URL(this.href);
+                const newSort = href.searchParams.get('sort');
+
+                // Logic đảo chiều: Nếu đang là 'name' -> đổi thành '-name' và ngược lại
+                if (currentSort === newSort) {
+                    href.searchParams.set('sort', '-' + newSort);
+                } else if (currentSort === '-' + newSort) {
+                    href.searchParams.set('sort', newSort); // Trở về tăng dần
+                }
+                
+                // Chuyển trang
+                window.location.href = href.toString();
+            });
+        });
+    });
+</script>
 {% endblock %}
