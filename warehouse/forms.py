@@ -168,7 +168,7 @@ class ProfileUpdateForm(forms.ModelForm):
         model = UserProfile
         fields = ['signature']
         labels = {
-            'signature': 'Ảnh chữ ký (Nền trong suốt)'
+            'signature': 'Ảnh chữ ký (Nền trong suốt hoặc nền trắng)'
         }
     
     # Sử dụng widget upload ảnh xịn xò mà ta đã làm (nếu muốn)
