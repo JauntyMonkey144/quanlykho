@@ -12,41 +12,48 @@
             </a>
         </div>
 
-        <form method="get" class="row g-2 align-items-end">
-            <div class="col-md-3">
-                <label class="small text-muted fw-bold">Tìm kiếm</label>
-                <div class="input-group">
-                    <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                    <input type="text" name="q" class="form-control" placeholder="Mã phiếu, Tên, Mã NV..." value="{{ current_search }}">
-                </div>
-            </div>
+<form method="get" class="row g-2 align-items-end">
+        {% if current_sort %}
+        <input type="hidden" name="sort" value="{{ current_sort }}">
+        {% endif %}
 
-            <div class="col-md-2">
-                <label class="small text-muted fw-bold">Phòng ban</label>
-                <input type="text" name="dept" class="form-control" placeholder="Nhập phòng..." value="{{ current_dept }}">
+        <div class="col-md-3">
+            <label class="small text-muted fw-bold">Tìm kiếm</label>
+            <div class="input-group">
+                <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                <input type="text" name="q" class="form-control" placeholder="Mã phiếu, Tên, Mã NV..." value="{{ current_search }}">
             </div>
+        </div>
 
-            <div class="col-md-3">
-                <label class="small text-muted fw-bold">Trạng thái</label>
-                <select name="status" class="form-select">
-                    <option value="">-- Tất cả trạng thái --</option>
-                    {% for code, label in status_choices %}
-                        <option value="{{ code }}" {% if current_status == code %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
+        <div class="col-md-2">
+            <label class="small text-muted fw-bold">Phòng ban</label>
+            <input type="text" name="dept" class="form-control" placeholder="Nhập phòng..." value="{{ current_dept }}">
+        </div>
 
-            <div class="col-md-2">
-                <label class="small text-muted fw-bold">Từ ngày</label>
-                <input type="date" name="date_from" class="form-control" value="{{ current_date_from }}">
+        <div class="col-md-2">
+            <label class="small text-muted fw-bold">Trạng thái</label>
+            <select name="status" class="form-select">
+                <option value="">Tất cả</option>
+                {% for code, label in status_choices %}
+                    <option value="{{ code }}" {% if current_status == code %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="col-md-3">
+            <label class="small text-muted fw-bold">Ngày tạo (Từ - Đến)</label>
+            <div class="input-group">
+                <input type="date" name="date_from" class="form-control" value="{{ current_date_from }}" title="Từ ngày">
+                <span class="input-group-text">-</span>
+                <input type="date" name="date_to" class="form-control" value="{{ current_date_to }}" title="Đến ngày">
             </div>
-            <div class="col-md-2">
-                <div class="d-grid">
-                    <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Lọc dữ liệu</button>
-                </div>
-            </div>
-        </form>
-    </div>
+        </div>
+
+        <div class="col-md-2 d-flex gap-1">
+            <button type="submit" class="btn btn-primary flex-grow-1"><i class="bi bi-funnel"></i> Lọc</button>
+            <a href="{% url 'loan_list' %}" class="btn btn-outline-secondary" title="Xóa bộ lọc"><i class="bi bi-x-lg"></i></a>
+        </div>
+    </form>
 
     <div class="card-body p-0">
         <div class="table-responsive">
