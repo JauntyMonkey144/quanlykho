@@ -28,7 +28,7 @@
 
                     {% if loan.status == 'dept_pending' %}
                         {% if request.user|has_group:"TruongPhong" or user.is_superuser %}
-                            <a href="{% url 'loan_action' loan.id 'dept_approve' %}" class="btn btn-info text-white fw-bold"><i class="bi bi-check-circle"></i> TP Duyệt</a>
+                            <a href="{% url 'loan_action' loan.id 'dept_approve' %}" class="btn btn-info text-white fw-bold"><i class="bi bi-check-circle"></i> Trưởng phòng duyệt</a>
                             <a href="{% url 'loan_action' loan.id 'reject' %}" class="btn btn-outline-danger">Từ chối</a>
                         {% else %}
                             <span class="badge bg-secondary p-2 align-self-center">Chờ Trưởng phòng duyệt</span>
@@ -37,7 +37,7 @@
 
                     {% if loan.status == 'director_pending' %}
                         {% if request.user|has_group:"GiamDoc" or user.is_superuser %}
-                            <a href="{% url 'loan_action' loan.id 'director_approve' %}" class="btn btn-primary fw-bold"><i class="bi bi-check-circle-fill"></i> GĐ Duyệt</a>
+                            <a href="{% url 'loan_action' loan.id 'director_approve' %}" class="btn btn-primary fw-bold"><i class="bi bi-check-circle-fill"></i> Giám đốc Duyệt</a>
                             <a href="{% url 'loan_action' loan.id 'reject' %}" class="btn btn-outline-danger">Từ chối</a>
                         {% else %}
                             <span class="badge bg-secondary p-2 align-self-center">Chờ Giám đốc duyệt</span>
