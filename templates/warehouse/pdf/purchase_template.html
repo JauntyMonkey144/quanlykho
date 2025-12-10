@@ -63,7 +63,6 @@
     <div class="info-section">
         <div class="info-row"><span class="label">Họ và tên:</span> {{ slip.nguoi_de_xuat }} ({{ slip.ma_nhan_vien }})</div>
         <div class="info-row"><span class="label">Chức vụ:</span> {{ slip.chuc_vu }}</div>
-        <div class="info-row"><span class="label">Ngày cần hàng:</span> {{ slip.ngay_can_hang|date:"d/m/Y" }}</div>
         <div class="info-row"><span class="label">Lý do đề xuất:</span> {{ slip.ly_do }}</div>
         {% if slip.nha_cung_cap %}<div class="info-row"><span class="label">Nhà cung cấp:</span> {{ slip.nha_cung_cap }}</div>{% endif %}
     </div>
@@ -73,8 +72,8 @@
             <tr>
                 <th width="5%">STT</th>
                 <th width="45%">Tên hàng hóa, quy cách</th>
-                <th width="10%">ĐVT</th>
-                <th width="10%">SL</th>
+                <th width="10%">Đơn vị tính</th>
+                <th width="10%">Số lượng</th>
                 <th width="30%">Ghi chú</th>
             </tr>
         </thead>
