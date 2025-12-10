@@ -77,7 +77,7 @@ LANGUAGE_CODE = 'vi' # Chuyển sang tiếng Việt
 TIME_ZONE = 'Asia/Ho_Chi_Minh'
 USE_I18N = True
 USE_TZ = True
-
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'

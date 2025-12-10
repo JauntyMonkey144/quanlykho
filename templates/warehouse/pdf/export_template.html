@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Phiếu Xuất Kho</title>
+    <style>
+        @page { size: A4; margin: 1.5cm; }
+        body { font-family: serif; font-size: 11pt; line-height: 1.3; }
+        
+        .header-table, .sign-table, .items-table { width: 100%; border-collapse: collapse; }
+        .title { text-align: center; font-size: 16pt; font-weight: bold; margin: 20px 0; text-transform: uppercase; }
+        
+        .items-table { margin-top: 20px; margin-bottom: 20px; }
+        .items-table th, .items-table td { border: 1px solid #000; padding: 6px; vertical-align: middle; }
+        .items-table th { background: #eee; text-align: center; font-weight: bold; white-space: nowrap; }
+        
+        .sign-table { text-align: center; margin-top: 20px; }
+        /* Chia 4 cột đều nhau cho phiếu xuất */
+        .sign-table td { vertical-align: top; width: 25%; }
+        .sign-title { font-weight: bold; text-transform: uppercase; font-size: 9pt; margin-bottom: 2px; }
+        .sign-note { font-style: italic; font-size: 8pt; margin-bottom: 5px; }
+        
+        .sign-space { height: 130px; vertical-align: bottom !important; padding-bottom: 5px; }
+        .sign-img { 
+            width: auto; height: auto; max-width: 100%; max-height: 70px; /* Nhỏ hơn chút vì có 4 cột */
+            object-fit: contain; display: block; margin: 0 auto 5px auto; 
+        }
+        .sign-date { font-size: 8pt; font-style: italic; color: #333; margin-bottom: 4px; display: block; }
+    </style>
+</head>
+<body>
+    <table class="header-table">
+        <tr>
+            <td width="60%">
+                <strong>CÔNG TY TNHH TỰ ĐỘNG HÓA MẶT TRỜI</strong><br>
+                Phòng: {{ slip.phong_ban }}<br>Số: #{{ slip.id|stringformat:"04d" }}
+            </td>
+            <td width="40%" align="center">
+                <strong>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</strong><br>Độc lập – Tự do – Hạnh phúc
+            </td>
+        </tr>
+    </table>
+
+    <div class="title">PHIẾU XUẤT KHO</div>
+
+    <p><strong>Họ và tên:</strong> {{ slip.nguoi_de_xuat }} ({{ slip.ma_nhan_vien }})</p>
+    <p><strong>Chức vụ:</strong> {{ slip.chuc_vu }}</p>
+    <p><strong>Lý do xuất:</strong> {{ slip.ly_do }}</p>
+
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th width="5%">STT</th>
+                <th width="45%">Tên tài sản/thiết bị, quy cách</th>
+                <th width="10%">ĐVT</th>
+                <th width="10%">SL</th>
+                <th width="30%">Ghi chú</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td align="center">{{ forloop.counter }}</td>
+                <td>{{ item.ten_hang_hoa }}</td>
+                <td align="center">{{ item.don_vi_tinh }}</td>
+                <td align="center"><strong>{{ item.so_luong }}</strong></td>
+                <td>{{ item.ghi_chu|default:"" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <br>
+    <div style="text-align: right; font-style: italic;">Tp. Hồ Chí Minh, ngày {% now "d" %} tháng {% now "m" %} năm {% now "Y" %}</div>
+    
+    <table class="sign-table">
+        <thead>
+            <tr>
+                <td><div class="sign-title">BAN GIÁM ĐỐC</div><div class="sign-note">(Ký, ghi rõ họ tên)</div></td>
+                <td><div class="sign-title">PHỤ TRÁCH KHO</div><div class="sign-note">(Ký, ghi rõ họ tên)</div></td>
+                <td><div class="sign-title">TRƯỞNG PHÒNG</div><div class="sign-note">(Ký, ghi rõ họ tên)</div></td>
+                <td><div class="sign-title">NGƯỜI ĐỀ XUẤT</div><div class="sign-note">(Ký, ghi rõ họ tên)</div></td>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="sign-space">
+                    {% if slip.user_giam_doc %}
+                        {% if slip.user_giam_doc.profile.signature %}
+                            <img src="file://{{ slip.user_giam_doc.profile.signature.path }}" class="sign-img">
+                        {% else %}<div style="height: 40px;"></div>{% endif %}
+                        
+                        <div class="sign-date">Ngày: {{ slip.ngay_giam_doc_duyet|date:"d/m/Y" }}</div>
+                        <strong>{{ slip.user_giam_doc.last_name }} {{ slip.user_giam_doc.first_name }}</strong>
+                    {% endif %}
+                </td>
+
+                <td class="sign-space">
+                    {% if slip.user_thu_kho %}
+                        {% if slip.user_thu_kho.profile.signature %}
+                            <img src="file://{{ slip.user_thu_kho.profile.signature.path }}" class="sign-img">
+                        {% else %}<div style="height: 40px;"></div>{% endif %}
+                        
+                        <div class="sign-date">Ngày: {{ slip.ngay_thu_kho_duyet|date:"d/m/Y" }}</div>
+                        <strong>{{ slip.user_thu_kho.last_name }} {{ slip.user_thu_kho.first_name }}</strong>
+                    {% endif %}
+                </td>
+
+                <td class="sign-space">
+                    {% if slip.user_truong_phong %}
+                        {% if slip.user_truong_phong.profile.signature %}
+                            <img src="file://{{ slip.user_truong_phong.profile.signature.path }}" class="sign-img">
+                        {% else %}<div style="height: 40px;"></div>{% endif %}
+                        
+                        <div class="sign-date">Ngày: {{ slip.ngay_truong_phong_duyet|date:"d/m/Y" }}</div>
+                        <strong>{{ slip.user_truong_phong.last_name }} {{ slip.user_truong_phong.first_name }}</strong>
+                    {% endif %}
+                </td>
+
+                <td class="sign-space">
+                    {% if slip.created_by.profile.signature %}
+                        <img src="file://{{ slip.created_by.profile.signature.path }}" class="sign-img">
+                    {% else %}<div style="height: 40px;"></div>{% endif %}
+                    
+                    <div class="sign-date">Ngày: {{ slip.ngay_tao|date:"d/m/Y" }}</div>
+                    <strong>{{ slip.nguoi_de_xuat }}</strong>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>

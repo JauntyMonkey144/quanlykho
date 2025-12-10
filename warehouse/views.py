@@ -3,6 +3,7 @@ from django.http import JsonResponse, HttpResponse
 from django.contrib import messages
 from django.template.loader import render_to_string
 from django.conf import settings
+from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
@@ -15,8 +16,12 @@ from .forms import UserUpdateForm, ProfileUpdateForm
 # Import Models và Forms
 from .models import LoanSlip, LoanImage, LoanItem, Employee, LoanHistory
 from .forms import LoanSlipForm, RegistrationForm, LoanItemFormSet, ReturnLoanForm
-from .utils import send_loan_email, get_emails_by_group
-
+from .utils import send_loan_email, get_emails_by_group, send_purchase_email
+from .models import PurchaseSlip, PurchaseItem, PurchaseHistory, PurchaseImage # Import
+from .forms import PurchaseSlipForm, PurchaseItemFormSet # Import
+from .models import ExportSlip, ExportItem, ExportImage, ExportHistory
+from .forms import ExportSlipForm, ExportItemFormSet
+from .utils import send_export_email # Import hàm mới
 # ============================================
 # CÁC VIEW HỆ THỐNG
 # ============================================
@@ -77,6 +82,330 @@ def api_get_employee(request):
             return JsonResponse({'found': False})
 
     return JsonResponse({'results': []})
+
+# 1. TẠO PHIẾU XUẤT
+@login_required
+def create_export(request):
+    if request.method == 'POST':
+        form = ExportSlipForm(request.POST, request.FILES)
+        item_formset = ExportItemFormSet(request.POST)
+
+        if form.is_valid():
+            slip = form.save(commit=False)
+            slip.created_by = request.user
+            slip.save()
+            
+            # Ghi nhật ký khởi tạo
+            ExportHistory.objects.create(
+                slip=slip, user=request.user, action="Tạo mới", note=f"Lý do: {slip.ly_do}"
+            )
+
+            # --- XỬ LÝ IMPORT EXCEL ---
+            excel_file = request.FILES.get('excel_file')
+            if excel_file:
+                try:
+                    df = pd.read_excel(excel_file)
+                    df.columns = df.columns.str.strip().str.lower()
+                    
+                    def find_col(df, keywords):
+                        for col in df.columns:
+                            if all(k in col for k in keywords): return col
+                        return None
+
+                    for index, row in df.iterrows():
+                        # Tìm cột Tên (Bắt buộc)
+                        col_ten = find_col(df, ['tên']) 
+                        ten = row.get(col_ten)
+                        if pd.isna(ten) or str(ten).strip() == '': continue
+                        
+                        # Tìm cột ĐVT, SL, Ghi chú
+                        col_dvt = find_col(df, ['đơn', 'vị']) or find_col(df, ['dvt'])
+                        dvt = row.get(col_dvt) or 'Cái'
+
+                        col_sl = find_col(df, ['số', 'lượng']) or find_col(df, ['sl'])
+                        try:
+                            sl = int(row.get(col_sl)) if pd.notna(row.get(col_sl)) else 1
+                        except: sl = 1
+
+                        col_gc = find_col(df, ['ghi', 'chú'])
+                        ghi_chu = row.get(col_gc) or ''
+
+                        ExportItem.objects.create(
+                            slip=slip, ten_hang_hoa=ten, don_vi_tinh=dvt, 
+                            so_luong=sl, ghi_chu=ghi_chu
+                        )
+                except Exception as e:
+                    messages.warning(request, f"Lỗi đọc file Excel: {e}")
+
+            # --- LƯU FORMSET (Dữ liệu nhập tay) ---
+            if item_formset.is_valid():
+                items = item_formset.save(commit=False)
+                for item in items:
+                    item.slip = slip
+                    item.save()
+                for obj in item_formset.deleted_objects: obj.delete()
+            
+            # --- LƯU ẢNH ---
+            files = request.FILES.getlist('photos')
+            for f in files:
+                ExportImage.objects.create(slip=slip, image=f)
+
+            messages.success(request, f"Đã tạo phiếu xuất kho #{slip.id:04d} thành công!")
+            return redirect('export_detail', pk=slip.id)
+    else:
+        form = ExportSlipForm()
+        item_formset = ExportItemFormSet()
+    
+    return render(request, 'warehouse/create_export.html', {'form': form, 'item_formset': item_formset})
+
+# 2. SỬA PHIẾU XUẤT
+@login_required
+def edit_export(request, pk):
+    slip = get_object_or_404(ExportSlip, pk=pk)
+    
+    # Chỉ cho sửa khi Nháp hoặc Từ chối
+    if slip.status not in ['draft', 'rejected']:
+        messages.error(request, "Chỉ được sửa phiếu khi ở trạng thái Nháp hoặc Bị từ chối.")
+        return redirect('export_detail', pk=pk)
+
+    if request.method == 'POST':
+        form = ExportSlipForm(request.POST, request.FILES, instance=slip)
+        item_formset = ExportItemFormSet(request.POST, instance=slip)
+
+        if form.is_valid():
+            slip = form.save(commit=False)
+            # Nếu đang bị từ chối -> Reset về nháp để gửi lại
+            if slip.status == 'rejected': 
+                slip.status = 'draft'
+            slip.save()
+            
+            ExportHistory.objects.create(slip=slip, user=request.user, action="Cập nhật phiếu")
+
+            # Import Excel thêm (nếu có)
+            excel_file = request.FILES.get('excel_file')
+            if excel_file:
+                try:
+                    df = pd.read_excel(excel_file)
+                    df.columns = df.columns.str.strip().str.lower()
+                    def find_col(df, keywords):
+                        for col in df.columns:
+                            if all(k in col for k in keywords): return col
+                        return None
+                    
+                    for index, row in df.iterrows():
+                        col_ten = find_col(df, ['tên']) 
+                        ten = row.get(col_ten)
+                        if pd.isna(ten) or str(ten).strip() == '': continue
+                        
+                        col_dvt = find_col(df, ['đơn', 'vị']) or find_col(df, ['dvt'])
+                        dvt = row.get(col_dvt) or 'Cái'
+                        col_sl = find_col(df, ['số', 'lượng']) or find_col(df, ['sl'])
+                        try: sl = int(row.get(col_sl)) if pd.notna(row.get(col_sl)) else 1
+                        except: sl = 1
+                        col_gc = find_col(df, ['ghi', 'chú'])
+                        ghi_chu = row.get(col_gc) or ''
+
+                        ExportItem.objects.create(slip=slip, ten_hang_hoa=ten, don_vi_tinh=dvt, so_luong=sl, ghi_chu=ghi_chu)
+                except Exception as e:
+                    messages.warning(request, f"Lỗi Excel: {e}")
+
+            # Lưu Formset
+            if item_formset.is_valid():
+                items = item_formset.save(commit=False)
+                for item in items:
+                    item.slip = slip
+                    item.save()
+                for obj in item_formset.deleted_objects: obj.delete()
+            
+            # Xóa ảnh cũ (nếu user tích chọn xóa)
+            delete_ids = request.POST.getlist('delete_ids')
+            if delete_ids:
+                ExportImage.objects.filter(id__in=delete_ids, slip=slip).delete()
+
+            # Thêm ảnh mới
+            files = request.FILES.getlist('photos')
+            for f in files:
+                ExportImage.objects.create(slip=slip, image=f)
+
+            messages.success(request, "Cập nhật phiếu thành công!")
+            return redirect('export_detail', pk=slip.id)
+    else:
+        form = ExportSlipForm(instance=slip)
+        item_formset = ExportItemFormSet(instance=slip)
+        item_formset.extra = 0 # Không hiện dòng trống khi sửa
+
+    return render(request, 'warehouse/edit_export.html', {'form': form, 'item_formset': item_formset, 'slip': slip})
+
+# 3. DANH SÁCH (CÓ LỌC & SẮP XẾP)
+@login_required
+def export_list(request):
+    slips = ExportSlip.objects.all().order_by('-id')
+
+    # --- BỘ LỌC ---
+    # 1. Tìm kiếm từ khóa
+    search_query = request.GET.get('q', '')
+    if search_query:
+        slips = slips.filter(
+            Q(id__icontains=search_query) | 
+            Q(nguoi_de_xuat__icontains=search_query) | 
+            Q(ma_nhan_vien__icontains=search_query)
+        )
+    
+    # 2. Trạng thái
+    status = request.GET.get('status', '')
+    if status:
+        slips = slips.filter(status=status)
+
+    # 3. Phòng ban
+    dept = request.GET.get('dept', '')
+    if dept:
+        slips = slips.filter(phong_ban__icontains=dept)
+
+    # 4. Ngày tạo
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
+    if date_from:
+        slips = slips.filter(ngay_tao__date__gte=date_from)
+    if date_to:
+        slips = slips.filter(ngay_tao__date__lte=date_to)
+
+    context = {
+        'slips': slips,
+        'status_choices': ExportSlip.STATUS_CHOICES,
+        'current_search': search_query,
+        'current_status': status,
+        'current_dept': dept,
+        'current_date_from': date_from,
+        'current_date_to': date_to,
+    }
+    return render(request, 'warehouse/export_list.html', context)
+
+# 4. CHI TIẾT
+@login_required
+def export_detail(request, pk):
+    slip = get_object_or_404(ExportSlip, pk=pk)
+    return render(request, 'warehouse/export_detail.html', {'slip': slip})
+
+# 5. XỬ LÝ DUYỆT (ACTION)
+@login_required
+def export_action(request, pk, action):
+    slip = get_object_or_404(ExportSlip, pk=pk)
+    user = request.user
+    note = request.POST.get('note', '')
+    
+    def check_perm(group): return user.groups.filter(name=group).exists() or user.is_superuser
+    
+    history_action = ""
+    mail_subject = ""
+    mail_message = ""
+    mail_recipients = []
+
+    # BƯỚC 1: Gửi duyệt (Nhân viên -> Trưởng phòng)
+    if action == 'send':
+        if slip.status not in ['draft', 'rejected']: return redirect('export_detail', pk=pk)
+        slip.status = 'dept_pending'
+        slip.ngay_gui = timezone.now()
+        history_action = "Gửi yêu cầu duyệt"
+        
+        mail_subject = f"[DUYỆT XUẤT] Phiếu #{slip.id:04d} chờ Trưởng phòng duyệt"
+        mail_message = f"Nhân viên {slip.nguoi_de_xuat} gửi yêu cầu xuất kho.\nLý do: {slip.ly_do}"
+        users = User.objects.filter(groups__name='TruongPhong')
+        mail_recipients = [u.email for u in users if u.email]
+
+    # BƯỚC 2: Trưởng phòng duyệt (TP -> Thủ kho)
+    elif action == 'dept_approve':
+        if not check_perm('TruongPhong'):
+            messages.error(request, "Cần quyền Trưởng phòng!")
+            return redirect('export_detail', pk=pk)
+        
+        slip.status = 'warehouse_pending'
+        slip.user_truong_phong = user
+        slip.ngay_truong_phong_duyet = timezone.now()
+        history_action = "Trưởng phòng đã duyệt"
+        
+        mail_subject = f"[DUYỆT XUẤT] Phiếu #{slip.id:04d} chờ Thủ kho kiểm tra"
+        mail_message = f"Trưởng phòng đã duyệt phiếu #{slip.id:04d}.\nMời Thủ kho kiểm tra hàng hóa."
+        users = User.objects.filter(groups__name='ThuKho')
+        mail_recipients = [u.email for u in users if u.email]
+
+    # BƯỚC 3: Thủ kho duyệt (TK -> Giám đốc)
+    elif action == 'warehouse_approve':
+        if not check_perm('ThuKho'):
+            messages.error(request, "Cần quyền Thủ kho!")
+            return redirect('export_detail', pk=pk)
+            
+        slip.status = 'director_pending'
+        slip.user_thu_kho = user
+        slip.ngay_thu_kho_duyet = timezone.now()
+        history_action = "Thủ kho đã duyệt (Đủ hàng)"
+        
+        mail_subject = f"[DUYỆT XUẤT] Phiếu #{slip.id:04d} chờ Giám đốc duyệt"
+        mail_message = f"Thủ kho xác nhận đủ hàng cho phiếu #{slip.id:04d}.\nMời Giám đốc phê duyệt."
+        users = User.objects.filter(groups__name='GiamDoc')
+        mail_recipients = [u.email for u in users if u.email]
+
+    # BƯỚC 4: Giám đốc duyệt (GĐ -> Hoàn tất)
+    elif action == 'director_approve':
+        if not check_perm('GiamDoc'):
+            messages.error(request, "Cần quyền Giám đốc!")
+            return redirect('export_detail', pk=pk)
+            
+        slip.status = 'completed'
+        slip.user_giam_doc = user
+        slip.ngay_giam_doc_duyet = timezone.now()
+        history_action = "Giám đốc đã duyệt (Hoàn tất)"
+        
+        mail_subject = f"[THÀNH CÔNG] Phiếu xuất #{slip.id:04d} đã được duyệt"
+        mail_message = f"Phiếu xuất kho của bạn đã được phê duyệt đầy đủ các cấp."
+        if slip.created_by and slip.created_by.email:
+            mail_recipients = [slip.created_by.email]
+
+    # TỪ CHỐI
+    elif action == 'reject':
+        # Cho phép TP, TK, GĐ từ chối
+        if not (check_perm('TruongPhong') or check_perm('ThuKho') or check_perm('GiamDoc')):
+            messages.error(request, "Bạn không có quyền từ chối!")
+            return redirect('export_detail', pk=pk)
+            
+        slip.status = 'rejected'
+        slip.ngay_tu_choi = timezone.now()
+        history_action = f"Từ chối bởi {user.last_name} {user.first_name}"
+        
+        mail_subject = f"[TỪ CHỐI] Phiếu xuất #{slip.id:04d} bị từ chối"
+        mail_message = f"Phiếu xuất kho đã bị từ chối.\nLý do: {note if note else 'Không có'}"
+        if slip.created_by and slip.created_by.email:
+            mail_recipients = [slip.created_by.email]
+
+    # LƯU & GHI LOG & GỬI MAIL
+    slip.save()
+    if history_action:
+        ExportHistory.objects.create(slip=slip, user=user, action=history_action, note=note)
+    
+    if mail_recipients:
+        try:
+            send_export_email(request, slip, mail_subject, mail_message, mail_recipients)
+        except Exception as e:
+            print(f"Lỗi gửi mail export: {e}")
+    
+    messages.success(request, f"Đã cập nhật trạng thái: {slip.get_status_display()}")
+    return redirect('export_detail', pk=pk)
+
+# 6. XUẤT PDF
+def export_export_pdf(request, pk):
+    slip = get_object_or_404(ExportSlip, pk=pk)
+    try:
+        html_string = render_to_string('warehouse/pdf/export_template.html', {
+            'slip': slip, 
+            'items': slip.items.all(), 
+            'request': request
+        })
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'inline; filename=phieu_xuat_{pk}.pdf'
+        HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf(response)
+        return response
+    except Exception as e:
+        messages.error(request, f"Lỗi tạo PDF: {e}")
+        return redirect('export_detail', pk=pk)
 
 # ============================================
 # 1. VIEW TẠO PHIẾU MƯỢN
@@ -599,3 +928,305 @@ def profile(request):
         'p_form': p_form
     }
     return render(request, 'warehouse/profile.html', context)
+
+# 1. TẠO PHIẾU MUA
+# warehouse/views.py
+
+@login_required
+def create_purchase(request):
+    if request.method == 'POST':
+        form = PurchaseSlipForm(request.POST, request.FILES)
+        item_formset = PurchaseItemFormSet(request.POST)
+
+        if form.is_valid():
+            slip = form.save(commit=False)
+            slip.created_by = request.user
+            slip.save()
+
+            # 1. GHI NHẬT KÝ
+            PurchaseHistory.objects.create(
+                slip=slip, user=request.user, action="Tạo mới", note=f"Lý do: {slip.ly_do}"
+            )
+
+            # 2. XỬ LÝ IMPORT EXCEL
+            excel_file = request.FILES.get('excel_file')
+            if excel_file:
+                try:
+                    df = pd.read_excel(excel_file)
+                    df.columns = df.columns.str.strip().str.lower()
+                    
+                    # Hàm tìm cột
+                    def find_col(df, keywords):
+                        for col in df.columns:
+                            if all(key in col for key in keywords): return col
+                        return None
+
+                    for index, row in df.iterrows():
+                        # Tìm tên hàng
+                        col_ten = find_col(df, ['tên']) 
+                        ten = row.get(col_ten) if col_ten else None
+                        if pd.isna(ten) or str(ten).strip() == '': continue
+
+                        # ĐVT & SL
+                        col_dvt = find_col(df, ['đơn', 'vị', 'tính']) or find_col(df, ['dvt'])
+                        dvt = row.get(col_dvt) if col_dvt else 'Cái'
+
+                        col_sl = find_col(df, ['số', 'lượng']) or find_col(df, ['sl'])
+                        sl = row.get(col_sl) if col_sl else 1
+                        try: sl = int(sl)
+                        except: sl = 1
+
+                        col_gc = find_col(df, ['ghi', 'chú'])
+                        ghi_chu = row.get(col_gc) if col_gc else ''
+
+                        PurchaseItem.objects.create(
+                            slip=slip,
+                            ten_hang_hoa=ten,
+                            don_vi_tinh=dvt,
+                            so_luong=sl,
+                            ghi_chu=ghi_chu
+                        )
+                except Exception as e:
+                    messages.warning(request, f"Lỗi Excel: {e}")
+
+            # 3. LƯU FORMSET
+            if item_formset.is_valid():
+                items = item_formset.save(commit=False)
+                for item in items:
+                    item.slip = slip
+                    item.save()
+                for obj in item_formset.deleted_objects: obj.delete()
+
+            # 4. LƯU ẢNH
+            files = request.FILES.getlist('photos')
+            for f in files:
+                PurchaseImage.objects.create(slip=slip, image=f)
+
+            detail_url = reverse('purchase_detail', args=[slip.id])
+            
+            # Tạo nội dung HTML cho thông báo
+            # class 'alert-link' của Bootstrap giúp link đậm và đẹp hơn trong khung thông báo
+            msg_html = f"""
+                Đã tạo phiếu <b>#{slip.id}</b> thành công! 
+                <a href="{detail_url}" class="alert-link text-decoration-underline">
+                    Bấm vào đây để xem chi tiết
+                </a>
+            """
+            messages.success(request, mark_safe(msg_html))            
+            return redirect('create_purchase') # Hoặc purchase_detail
+    else:
+        form = PurchaseSlipForm()
+        item_formset = PurchaseItemFormSet()
+
+    return render(request, 'warehouse/create_purchase.html', {'form': form, 'item_formset': item_formset})
+
+# 2. CHI TIẾT & DUYỆT
+@login_required
+def purchase_detail(request, pk):
+    slip = get_object_or_404(PurchaseSlip, pk=pk)
+    return render(request, 'warehouse/purchase_detail.html', {'slip': slip})
+
+@login_required
+def edit_purchase(request, pk):
+    slip = get_object_or_404(PurchaseSlip, pk=pk)
+
+    # 1. Kiểm tra quyền sửa
+    if slip.status not in ['draft', 'rejected']:
+        messages.error(request, "Chỉ có thể sửa phiếu khi ở trạng thái Nháp hoặc Bị từ chối.")
+        return redirect('purchase_detail', pk=pk)
+
+    if request.method == 'POST':
+        form = PurchaseSlipForm(request.POST, request.FILES, instance=slip)
+        item_formset = PurchaseItemFormSet(request.POST, instance=slip)
+
+        if form.is_valid():
+            slip = form.save(commit=False)
+            # Nếu đang bị từ chối -> Chuyển về nháp để gửi lại
+            if slip.status == 'rejected':
+                slip.status = 'draft'
+            slip.save()
+
+            # 2. Ghi Nhật Ký
+            PurchaseHistory.objects.create(
+                slip=slip, user=request.user, action="Cập nhật phiếu", note="Chỉnh sửa thông tin mua hàng"
+            )
+
+            # 3. XỬ LÝ IMPORT EXCEL
+            excel_file = request.FILES.get('excel_file')
+            if excel_file:
+                try:
+                    df = pd.read_excel(excel_file)
+                    df.columns = df.columns.str.strip().str.lower()
+                    
+                    def find_col(df, keys):
+                        for c in df.columns:
+                            if all(k in c for k in keys): return c
+                        return None
+
+                    for index, row in df.iterrows():
+                        # Tên hàng
+                        col_ten = find_col(df, ['tên']) 
+                        ten = row.get(col_ten)
+                        if pd.isna(ten) or str(ten).strip() == '': continue
+
+                        # ĐVT & SL
+                        col_dvt = find_col(df, ['đơn', 'vị', 'tính']) or find_col(df, ['dvt'])
+                        dvt = row.get(col_dvt) or 'Cái'
+
+                        col_sl = find_col(df, ['số', 'lượng']) or find_col(df, ['sl'])
+                        sl = row.get(col_sl) or 1
+                        try: sl = int(sl)
+                        except: sl = 1
+
+                        col_gc = find_col(df, ['ghi', 'chú'])
+                        ghi_chu = row.get(col_gc) or ''
+
+                        PurchaseItem.objects.create(
+                            slip=slip, ten_hang_hoa=ten, don_vi_tinh=dvt, so_luong=sl, ghi_chu=ghi_chu
+                        )
+                except Exception as e:
+                    messages.warning(request, f"Lỗi Excel: {e}")
+
+            # 4. Xử lý Formset (Lưu sửa / Xóa dòng)
+            if item_formset.is_valid():
+                items = item_formset.save(commit=False)
+                for item in items:
+                    item.slip = slip
+                    item.save()
+                for obj in item_formset.deleted_objects:
+                    obj.delete()
+
+            # 5. Xóa ảnh cũ
+            delete_ids = request.POST.getlist('delete_ids')
+            if delete_ids:
+                PurchaseImage.objects.filter(id__in=delete_ids, slip=slip).delete()
+
+            # 6. Thêm ảnh mới
+            files = request.FILES.getlist('photos')
+            for f in files:
+                PurchaseImage.objects.create(slip=slip, image=f)
+
+            messages.success(request, "Đã cập nhật phiếu mua hàng thành công!")
+            return redirect('purchase_detail', pk=slip.id)
+    else:
+        form = PurchaseSlipForm(instance=slip)
+        item_formset = PurchaseItemFormSet(instance=slip)
+        item_formset.extra = 0 # Không hiện dòng trống khi sửa
+
+    return render(request, 'warehouse/edit_purchase.html', {
+        'form': form, 
+        'item_formset': item_formset, 
+        'loan': slip # Để dùng chung template logic ảnh cũ nếu cần (hoặc đổi tên biến trong template)
+    })
+
+@login_required
+def purchase_action(request, pk, action):
+    slip = get_object_or_404(PurchaseSlip, pk=pk)
+    user = request.user
+    note = request.POST.get('note', '') 
+    
+    def check_perm(group_name): 
+        return user.groups.filter(name=group_name).exists() or user.is_superuser
+
+    history_action = ""
+    mail_subject = ""
+    mail_message = ""
+    mail_recipients = []
+
+    # --- 1. GỬI DUYỆT ---
+    if action == 'send':
+        if slip.status not in ['draft', 'rejected']:
+            messages.error(request, "Trạng thái không hợp lệ.")
+            return redirect('purchase_detail', pk=pk)
+            
+        slip.status = 'dept_pending'
+        slip.ngay_gui = timezone.now()
+        history_action = "Gửi yêu cầu duyệt"
+        
+        mail_subject = f"[DUYỆT MUA] Phiếu #{slip.id:04d} chờ Trưởng phòng duyệt"
+        mail_message = f"Chào Trưởng phòng,\nNhân viên {slip.nguoi_de_xuat} vừa gửi yêu cầu mua hàng.\nLý do: {slip.ly_do}"
+        
+        users = User.objects.filter(groups__name='TruongPhong')
+        mail_recipients = [u.email for u in users if u.email]
+
+    # --- 2. TRƯỞNG PHÒNG DUYỆT ---
+    elif action == 'dept_approve':
+        if not check_perm('TruongPhong'):
+            messages.error(request, "Bạn không có quyền Trưởng phòng!")
+            return redirect('purchase_detail', pk=pk)
+            
+        slip.status = 'director_pending'
+        slip.user_phu_trach = user
+        slip.ngay_phu_trach_duyet = timezone.now()
+        history_action = "Trưởng phòng đã duyệt"
+        
+        mail_subject = f"[DUYỆT MUA] Phiếu #{slip.id:04d} chờ Giám đốc duyệt"
+        mail_message = f"Chào Giám đốc,\nTrưởng phòng {user.last_name} {user.first_name} đã duyệt phiếu mua hàng #{slip.id:04d}.\nXin vui lòng phê duyệt cuối."
+        
+        users = User.objects.filter(groups__name='GiamDoc')
+        mail_recipients = [u.email for u in users if u.email]
+
+    # --- 3. GIÁM ĐỐC DUYỆT ---
+    elif action == 'director_approve':
+        if not check_perm('GiamDoc'):
+            messages.error(request, "Bạn không có quyền Giám đốc!")
+            return redirect('purchase_detail', pk=pk)
+            
+        slip.status = 'approved'
+        slip.user_giam_doc = user
+        slip.ngay_giam_doc_duyet = timezone.now()
+        history_action = "Giám đốc đã duyệt (Hoàn tất)"
+        
+        mail_subject = f"[THÀNH CÔNG] Phiếu mua #{slip.id:04d} đã được duyệt"
+        mail_message = f"Xin chúc mừng {slip.nguoi_de_xuat},\nYêu cầu mua hàng của bạn đã được Ban Giám Đốc phê duyệt."
+        
+        if slip.created_by and slip.created_by.email:
+            mail_recipients = [slip.created_by.email]
+
+    # --- 4. TỪ CHỐI ---
+    elif action == 'reject':
+        if not (check_perm('TruongPhong') or check_perm('GiamDoc')):
+            messages.error(request, "Bạn không có quyền từ chối!")
+            return redirect('purchase_detail', pk=pk)
+            
+        slip.status = 'rejected'
+        slip.ngay_tu_choi = timezone.now()
+        history_action = f"Đã từ chối bởi {user.last_name} {user.first_name}"
+        
+        mail_subject = f"[TỪ CHỐI] Phiếu mua #{slip.id:04d} bị từ chối"
+        mail_message = f"Chào {slip.nguoi_de_xuat},\nRất tiếc, phiếu #{slip.id:04d} đã bị từ chối.\nLý do/Ghi chú: {note if note else 'Không có'}"
+        
+        if slip.created_by and slip.created_by.email:
+            mail_recipients = [slip.created_by.email]
+
+    # === LƯU & LOG & GỬI MAIL ===
+    slip.save()
+    
+    if history_action:
+        PurchaseHistory.objects.create(slip=slip, user=user, action=history_action, note=note)
+
+    if mail_recipients:
+        # Gọi hàm từ utils.py
+        send_purchase_email(request, slip, mail_subject, mail_message, mail_recipients)
+
+    messages.success(request, f"Đã cập nhật trạng thái: {slip.get_status_display()}")
+    return redirect('purchase_detail', pk=pk)
+
+# --- VIEW DANH SÁCH PHIẾU MUA ---
+@login_required
+def purchase_list(request):
+    # Lấy tất cả phiếu mua, mới nhất lên đầu
+    slips = PurchaseSlip.objects.all().order_by('-id')
+    return render(request, 'warehouse/purchase_list.html', {'slips': slips})
+    
+# 3. XUẤT PDF
+def export_purchase_pdf(request, pk):
+    slip = get_object_or_404(PurchaseSlip, pk=pk)
+    html_string = render_to_string('warehouse/pdf/purchase_template.html', {
+        'slip': slip, 'items': slip.items.all(), 'request': request
+    })
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'inline; filename=phieu_mua_{pk}.pdf'
+    HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf(response)
+    return response
+

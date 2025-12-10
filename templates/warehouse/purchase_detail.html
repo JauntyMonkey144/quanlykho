@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% load auth_extras %}
+
+{% block title %}Chi tiết Phiếu Mua #{{ slip.id }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="mb-3">
+            <a href="{% url 'purchase_list' %}" class="text-decoration-none text-muted">
+                <i class="bi bi-arrow-left"></i> Quay lại danh sách
+            </a>
+        </div>
+
+        <div class="card mb-4 border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="fw-bold text-{{ slip.status_color }} mb-3">
+                    TRẠNG THÁI: {{ slip.get_status_display|upper }}
+                </h5>
+                
+                <div class="d-flex gap-2 flex-wrap">
+                    {% if slip.status == 'draft' or slip.status == 'rejected' %}
+                        {% if user == slip.created_by or user.is_superuser %}
+                            <a href="{% url 'purchase_action' slip.id 'send' %}" class="btn btn-success">
+                                <i class="bi bi-send"></i> Gửi duyệt
+                            </a>
+                            <a href="{% url 'edit_purchase' slip.id %}" class="btn btn-warning text-dark fw-bold">
+                                <i class="bi bi-pencil"></i> Sửa phiếu
+                            </a>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if slip.status == 'dept_pending' %}
+                        {% if request.user|has_group:"TruongPhong" or user.is_superuser %}
+                            <a href="{% url 'purchase_action' slip.id 'dept_approve' %}" class="btn btn-info text-white fw-bold">
+                                <i class="bi bi-check-circle"></i> Phụ trách Duyệt
+                            </a>
+                            <a href="{% url 'purchase_action' slip.id 'reject' %}" class="btn btn-outline-danger">Từ chối</a>
+                        {% else %}
+                            <span class="badge bg-secondary p-2 align-self-center">Chờ Phụ trách duyệt</span>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if slip.status == 'director_pending' %}
+                        {% if request.user|has_group:"GiamDoc" or user.is_superuser %}
+                            <a href="{% url 'purchase_action' slip.id 'director_approve' %}" class="btn btn-success fw-bold">
+                                <i class="bi bi-check-circle-fill"></i> Giám đốc Duyệt
+                            </a>
+                            <a href="{% url 'purchase_action' slip.id 'reject' %}" class="btn btn-outline-danger">Từ chối</a>
+                        {% else %}
+                            <span class="badge bg-secondary p-2 align-self-center">Chờ Giám đốc duyệt</span>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if slip.status == 'approved' %}
+                        <span class="badge bg-success p-2 align-self-center"><i class="bi bi-check-all"></i> Đã được duyệt mua</span>
+                    {% endif %}
+                    
+                    <a href="{% url 'export_purchase_pdf' slip.id %}" class="btn btn-dark ms-auto" target="_blank">
+                        <i class="bi bi-printer"></i> In PDF
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-success text-white fw-bold">I. THÔNG TIN ĐỀ XUẤT</div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="text-muted small">Mã phiếu</label>
+                        <div class="fw-bold">#{{ slip.id|stringformat:"04d" }}</div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="text-muted small">Người đề xuất</label>
+                        <div class="fw-bold">{{ slip.nguoi_de_xuat }}</div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="text-muted small">Mã nhân viên</label>
+                        <div>{{ slip.ma_nhan_vien }}</div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="text-muted small">Phòng ban</label>
+                        <div>{{ slip.phong_ban }}</div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="text-muted small">Nhà cung cấp dự kiến</label>
+                        <div class="fw-bold text-primary">{{ slip.nha_cung_cap|default:"--" }}</div>
+                    </div>
+
+                    <div class="col-md-12">
+                        <label class="text-muted small">Lý do đề xuất</label>
+                        <div>{{ slip.ly_do|linebreaks }}</div>
+                    </div>
+                    
+                    {% if slip.ghi_chu %}
+                    <div class="col-md-12">
+                        <label class="text-muted small">Ghi chú thêm</label>
+                        <div class="fst-italic">{{ slip.ghi_chu }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-success text-white fw-bold">II. DANH SÁCH HÀNG HÓA</div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-bordered mb-0 align-middle text-nowrap">
+                        <thead class="bg-light text-center">
+                            <tr>
+                                <th width="5%">STT</th>
+                                <th width="45%">Tên hàng hóa / Quy cách</th>
+                                <th width="10%">Đơn vị tính</th>
+                                <th width="10%">Số lượng</th>
+                                <th width="30%">Ghi chú</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in slip.items.all %}
+                            <tr>
+                                <td class="text-center fw-bold">{{ forloop.counter }}</td>
+                                <td>{{ item.ten_hang_hoa }}</td>
+                                <td class="text-center">{{ item.don_vi_tinh }}</td>
+                                <td class="text-center fw-bold">{{ item.so_luong }}</td>
+                                <td>{{ item.ghi_chu|default:"" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-3">Không có hàng hóa nào.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        {% if slip.images.all %}
+        <div class="card mt-4 shadow-sm">
+            <div class="card-header bg-light fw-bold">HÌNH ẢNH / BÁO GIÁ</div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-3">
+                    {% for img in slip.images.all %}
+                    <div class="border rounded p-2 text-center bg-white">
+                        <a href="{{ img.image.url }}" target="_blank">
+                            <img src="{{ img.image.url }}" style="height: 150px; width: auto; object-fit: contain;" class="rounded">
+                        </a>
+                        <div class="small text-muted mt-1">{{ img.uploaded_at|date:"d/m H:i" }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="card mt-4 mb-5 border-0 shadow-sm">
+            <div class="card-header bg-light fw-bold"><i class="bi bi-clock-history"></i> NHẬT KÝ XỬ LÝ</div>
+            <div class="card-body">
+                <ul class="timeline list-unstyled mb-0">
+                    {% for log in slip.history.all|dictsort:"timestamp" %}
+                    <li class="timeline-item pb-3 border-bottom mb-3">
+                        <div class="d-flex justify-content-between">
+                            <strong class="text-success">{{ log.action }}</strong>
+                            <span class="text-muted small">{{ log.timestamp|date:"H:i d/m/Y" }}</span>
+                        </div>
+                        <p class="mb-0 small text-muted">
+                            Người thực hiện: {{ log.user.last_name }} {{ log.user.first_name }} ({{ log.user.username }})
+                        </p>
+                        {% if log.note %}
+                        <p class="mb-0 small fst-italic text-dark mt-1">"{{ log.note }}"</p>
+                        {% endif %}
+                    </li>
+                    {% empty %}
+                    <li class="text-muted">Chưa có lịch sử.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<style>
+    /* CSS Timeline */
+    .timeline-item:last-child { border-bottom: none !important; margin-bottom: 0 !important; padding-bottom: 0 !important; }
+</style>
+{% endblock %}

@@ -55,6 +55,45 @@
         position: relative;
     }
 
+    /* --- BỘ MÀU XUẤT KHO (CAM ĐẬM) --- */
+    :root {
+        --export-color: #fd7e14; /* Cam đậm */
+        --export-hover: #e3690b; /* Cam tối hơn khi hover */
+        --export-bg-subtle: #fff1e5; /* Nền nhạt cho bảng */
+    }
+
+    /* Chữ & Icon */
+    .text-export { color: var(--export-color) !important; }
+    
+    /* Nền đậm (Header, Badge) - Chữ trắng sẽ nổi bật */
+    .bg-export { background-color: var(--export-color) !important; color: white !important; }
+    
+    /* Nền nhạt (Header bảng danh sách) */
+    .bg-export-subtle { background-color: var(--export-bg-subtle) !important; color: #664d03 !important; }
+
+    /* Nút bấm (Solid) */
+    .btn-export { 
+        background-color: var(--export-color); 
+        border-color: var(--export-color); 
+        color: white; 
+        font-weight: bold;
+    }
+    .btn-export:hover { background-color: var(--export-hover); border-color: var(--export-hover); color: white; }
+
+    /* Nút bấm (Outline) */
+    .btn-outline-export { 
+        color: var(--export-color); 
+        border-color: var(--export-color); 
+        font-weight: bold;
+    }
+    .btn-outline-export:hover { 
+        background-color: var(--export-color); 
+        color: white; 
+    }
+    
+    /* Border */
+    .border-export { border-color: var(--export-color) !important; }
+    
     .excel-upload-area:hover {
         border-color: #198754; /* Xanh lá đậm khi hover */
         background-color: #f8fffb;
@@ -75,7 +114,6 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
         <div class="container">
             <a class="navbar-brand fw-bold" href="/"><i class="bi bi-box-seam"></i> SUN AUTOMATION</a>
-            
             <div class="collapse navbar-collapse">
                 <ul class="navbar-nav me-auto">
                 </ul>

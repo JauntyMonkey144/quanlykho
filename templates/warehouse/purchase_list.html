@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Danh Sách Phiếu Mua Hàng{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h4 class="mb-0 text-success fw-bold"><i class="bi bi-bag-check-fill"></i> DANH SÁCH PHIẾU MUA</h4>
+        <a href="{% url 'create_purchase' %}" class="btn btn-success fw-bold"><i class="bi bi-plus-lg"></i> Tạo đề xuất</a>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="bg-light text-success">
+                    <tr>
+                        <th>Mã Phiếu</th>
+                        <th>Người đề xuất</th>
+                        <th>Phòng ban</th>
+                        <th>Nhà cung cấp</th>
+                        <th>Ngày tạo</th>
+                        <th>Trạng thái</th>
+                        <th class="text-center">Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for slip in slips %}
+                    <tr>
+                        <td class="fw-bold">#{{ slip.id|stringformat:"04d" }}</td>
+                        <td>
+                            <div class="fw-bold">{{ slip.nguoi_de_xuat }}</div>
+                            <small class="text-muted">{{ slip.ma_nhan_vien }}</small>
+                        </td>
+                        <td>{{ slip.phong_ban }}</td>
+                        <td>{{ slip.nha_cung_cap|default:"--" }}</td>
+                        <td>{{ slip.ngay_tao|date:"d/m/Y" }}</td>
+                        <td>
+                            <span class="badge bg-{{ slip.status_color }} px-3 py-2 rounded-pill">
+                                {{ slip.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <a href="{% url 'purchase_detail' slip.id %}" class="btn btn-outline-success btn-sm border-0">
+                                <i class="bi bi-eye-fill fs-5"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-muted">Chưa có phiếu nào.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -6,7 +6,8 @@ from crispy_forms.layout import Layout, Submit, Row, Column
 from django.forms import inlineformset_factory
 from .models import LoanSlip, LoanItem, Employee, LoanImage
 from .models import UserProfile # Nhớ import model này
-
+from .models import PurchaseSlip, PurchaseItem # Import thêm
+from .models import ExportSlip, ExportItem # Import thêm
 # ==========================================
 # 1. WIDGET TÙY CHỈNH (UPLOAD NHIỀU ẢNH)
 # ==========================================
@@ -60,6 +61,33 @@ class RegistrationForm(UserCreationForm):
             'password2',
             Submit('submit', 'Đăng Ký Tài Khoản', css_class='btn btn-success w-100 mt-4 fw-bold')
         )
+
+
+# Form Cha
+class ExportSlipForm(forms.ModelForm):
+    excel_file = forms.FileField(label="Import Excel", required=False, widget=forms.FileInput(attrs={'accept': '.xlsx, .xls'}))
+    photos = MultipleFileField(label="Ảnh đính kèm", required=False, widget=MultipleFileInput(attrs={'multiple': True, 'accept': 'image/*', 'capture': 'environment'}))
+
+    class Meta:
+        model = ExportSlip
+        fields = ['ma_nhan_vien', 'nguoi_de_xuat', 'email', 'chuc_vu', 'phong_ban', 'ly_do', 'ghi_chu']
+        widgets = {
+            'nguoi_de_xuat': forms.TextInput(attrs={'readonly': 'readonly'}),
+            'email': forms.TextInput(attrs={'readonly': 'readonly'}),
+            'chuc_vu': forms.TextInput(attrs={'readonly': 'readonly'}),
+            'phong_ban': forms.TextInput(attrs={'readonly': 'readonly'}),
+            'ly_do': forms.Textarea(attrs={'rows': 2}),
+            'ghi_chu': forms.Textarea(attrs={'rows': 2}),
+        }
+
+# Form Con
+class ExportItemForm(forms.ModelForm):
+    class Meta:
+        model = ExportItem
+        fields = ['ten_hang_hoa', 'don_vi_tinh', 'so_luong', 'ghi_chu']
+        labels = {'ten_hang_hoa': '', 'don_vi_tinh': '', 'so_luong': '', 'ghi_chu': ''}
+
+ExportItemFormSet = inlineformset_factory(ExportSlip, ExportItem, form=ExportItemForm, extra=1, can_delete=True)
 
 # ==========================================
 # 3. FORM TẠO PHIẾU MƯỢN (LoanSlipForm)
@@ -173,3 +201,28 @@ class ProfileUpdateForm(forms.ModelForm):
     
     # Sử dụng widget upload ảnh xịn xò mà ta đã làm (nếu muốn)
     # Hoặc dùng mặc định cho đơn giản. Ở đây dùng mặc định của Crispy.
+# === FORM PHIẾU MUA HÀNG ===
+class PurchaseSlipForm(forms.ModelForm):
+    excel_file = forms.FileField(label="Import Excel", required=False, widget=forms.FileInput(attrs={'accept': '.xlsx, .xls'}))
+    
+    class Meta:
+        model = PurchaseSlip
+        fields = ['ma_nhan_vien', 'nguoi_de_xuat', 'email', 'chuc_vu', 'phong_ban', 'nha_cung_cap', 'ly_do', 'ghi_chu']
+        widgets = {
+            'nguoi_de_xuat': forms.TextInput(attrs={'readonly': 'readonly'}),
+            'email': forms.TextInput(attrs={'readonly': 'readonly'}),
+            'chuc_vu': forms.TextInput(attrs={'readonly': 'readonly'}),
+            'phong_ban': forms.TextInput(attrs={'readonly': 'readonly'}),
+            'ly_do': forms.Textarea(attrs={'rows': 2}),
+            'ghi_chu': forms.Textarea(attrs={'rows': 2}),
+        }
+
+class PurchaseItemForm(forms.ModelForm):
+    class Meta:
+        model = PurchaseItem
+        fields = ['ten_hang_hoa', 'don_vi_tinh', 'so_luong', 'ghi_chu']
+        labels = { 'ten_hang_hoa': '', 'don_vi_tinh': '', 'so_luong': '', 'ghi_chu': '' }
+
+PurchaseItemFormSet = inlineformset_factory(
+    PurchaseSlip, PurchaseItem, form=PurchaseItemForm, extra=1, can_delete=True
+)

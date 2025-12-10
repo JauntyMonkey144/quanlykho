@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Sửa Phiếu Xuất #{{ slip.id }}{% endblock %}
+
+{% block content %}
+<form method="post" enctype="multipart/form-data" id="exportForm" class="pb-5">
+    {% csrf_token %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold text-warning text-uppercase"><i class="bi bi-pencil-square"></i> CẬP NHẬT PHIẾU XUẤT #{{ slip.id }}</h3>
+        <div>
+            <a href="{% url 'export_detail' slip.id %}" class="btn btn-outline-secondary me-2">Hủy bỏ</a>
+            <button type="submit" class="btn btn-warning fw-bold px-4 shadow-sm"><i class="bi bi-save"></i> LƯU THAY ĐỔI</button>
+        </div>
+    </div>
+    {% include "warehouse/includes/export_form_content.html" %}
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<script>
+$(document).ready(function() {
+
+    // 1. AUTOCOMPLETE (Dùng chung logic)
+    var searchInput = $('#id_ma_nhan_vien');
+    var suggestionBox = $('#suggestion-box');
+
+    searchInput.on('input', function() {
+        var query = $(this).val().trim();
+        if (query.length < 1) { suggestionBox.hide(); return; }
+        $.ajax({
+            url: "{% url 'api_get_employee' %}",
+            data: { 'query': query },
+            success: function(data) {
+                var html = '';
+                if (data.results.length > 0) {
+                    data.results.forEach(function(emp) {
+                        html += `<a href="javascript:void(0)" class="list-group-item list-group-item-action suggestion-item" data-ma="${emp.ma_nhan_vien}" data-ten="${emp.ho_ten}" data-email="${emp.email}" data-cv="${emp.chuc_vu}" data-pb="${emp.phong_ban}"><div><strong>${emp.ho_ten}</strong> <span class="badge bg-warning">${emp.ma_nhan_vien}</span><div class="small text-muted">${emp.chuc_vu}</div></div></a>`;
+                    });
+                    suggestionBox.html(html).show();
+                } else { suggestionBox.html('<div class="list-group-item text-muted">Không tìm thấy.</div>').show(); }
+            }
+        });
+    });
+
+    $(document).on('click', '.suggestion-item', function() {
+        var emp = $(this).data();
+        $('#id_ma_nhan_vien').val(emp.ma);
+        $('#id_nguoi_de_xuat').val(emp.ten); // Lưu ý ID trường này khác phiếu mượn
+        $('#id_email').val(emp.email);
+        $('#id_chuc_vu').val(emp.cv);
+        $('#id_phong_ban').val(emp.pb);
+        suggestionBox.hide();
+    });
+
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('#id_ma_nhan_vien').length) suggestionBox.hide();
+    });
+
+    // 2. FORMSET
+    function updateRowIndices() {
+        $('#items-table .item-row:visible').each(function(index) {
+            $(this).find('.row-index').text(index + 1);
+        });
+    }
+
+    $('#add-row').click(function() {
+        var totalForms = $('#id_items-TOTAL_FORMS');
+        var formIdx = parseInt(totalForms.val());
+        var newRow = $('#empty-form-template').html().replace(/__prefix__/g, formIdx);
+        $('#form-body').append(newRow);
+        totalForms.val(formIdx + 1);
+        updateRowIndices();
+    });
+
+    $(document).on('click', '.delete-row', function() {
+        var row = $(this).closest('tr');
+        if (row.find('input[name$="-id"]').val()) {
+            row.find('input[name$="-DELETE"]').prop('checked', true);
+            row.hide();
+        } else {
+            row.remove();
+        }
+        updateRowIndices();
+    });
+
+    // 3. UPLOAD ẢNH
+    const dt = new DataTransfer();
+    const input = document.getElementById('id_photos');
+    const dropZone = $('#drop-zone');
+
+    $('#btn-select').on('click', function(e) { e.stopPropagation(); $('#id_photos').click(); });
+    dropZone.on('click', function(e) { if (!$(e.target).is('#id_photos')) $('#id_photos').click(); });
+    dropZone.on('dragover', function(e) { e.preventDefault(); e.stopPropagation(); $(this).addClass('drag-over'); });
+    dropZone.on('dragleave drop', function(e) { e.preventDefault(); e.stopPropagation(); $(this).removeClass('drag-over'); });
+    
+    dropZone.on('drop', function(e) { handleFiles(e.originalEvent.dataTransfer.files); });
+    $('#id_photos').on('change', function() { handleFiles(this.files); });
+
+    function handleFiles(files) {
+        for (let i = 0; i < files.length; i++) {
+            if (files[i].type.startsWith('image/')) dt.items.add(files[i]);
+        }
+        input.files = dt.files;
+        renderPreview();
+    }
+
+    function renderPreview() {
+        $('#new-images-preview').html('');
+        Array.from(dt.files).forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                $('#new-images-preview').append(`<div class="col-auto fade-in"><div class="position-relative border rounded p-1 bg-white shadow-sm" style="width: 100px; height: 100px;"><img src="${e.target.result}" class="w-100 h-100 object-fit-cover rounded"><button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 p-0 d-flex align-items-center justify-content-center rounded-circle btn-remove-img" data-index="${index}" style="width: 20px; height: 20px; transform: translate(30%, -30%);"><i class="bi bi-x small"></i></button></div></div>`);
+            }
+            reader.readAsDataURL(file);
+        });
+    }
+    $(document).on('click', '.btn-remove-img', function(e) {
+        e.stopPropagation(); const idx = $(this).data('index');
+        const newDt = new DataTransfer(); Array.from(dt.files).forEach((f, i) => { if (i !== idx) newDt.items.add(f); });
+        dt.items.clear(); Array.from(newDt.files).forEach(f => dt.items.add(f)); input.files = dt.files; renderPreview();
+    });
+
+    // 4. EXCEL (MAPPING CHO MUA HÀNG: TÊN, ĐVT, SL, GHI CHÚ)
+    const excelInput = document.getElementById('id_excel_file');
+    const excelZone = $('#excel-drop-zone');
+    const excelNameDisplay = $('#excel-file-name');
+
+    $('#btn-select-excel').on('click', function(e) { e.stopPropagation(); $(excelInput).click(); });
+    excelZone.on('click', function(e) { if (!$(e.target).is(excelInput) && !$(e.target).closest('#btn-remove-excel').length) $(excelInput).click(); });
+    
+    excelZone.on('dragover', function(e) { e.preventDefault(); e.stopPropagation(); $(this).addClass('drag-over-excel'); });
+    excelZone.on('dragleave drop', function(e) { e.preventDefault(); e.stopPropagation(); $(this).removeClass('drag-over-excel'); });
+    
+    excelZone.on('drop', function(e) { if (e.originalEvent.dataTransfer.files.length > 0) handleExcelFile(e.originalEvent.dataTransfer.files[0]); });
+    $(excelInput).on('change', function() { if (this.files.length > 0) handleExcelFile(this.files[0]); });
+
+    function handleExcelFile(file) {
+        if (!file.name.match(/\.(xls|xlsx)$/)) { alert("Chỉ chọn file Excel!"); return; }
+        const dtEx = new DataTransfer(); dtEx.items.add(file); excelInput.files = dtEx.files;
+        excelNameDisplay.html(`<div class="d-flex align-items-center justify-content-center gap-2 p-2 bg-success bg-opacity-10 rounded mt-2"><span class="text-success fw-bold"><i class="bi bi-file-earmark-excel-fill"></i> ${file.name}</span><a href="javascript:void(0)" id="btn-remove-excel" class="text-danger"><i class="bi bi-x-lg"></i></a></div>`);
+        processExcel(file);
+    }
+    
+    $(document).on('click', '#btn-remove-excel', function(e) {
+        e.preventDefault(); e.stopPropagation(); $(excelInput).val(''); excelNameDisplay.html('');
+        if(confirm("Xóa dữ liệu Excel trong bảng?")) {
+             $('#form-body .item-row').not('#empty-form-template .item-row').each(function(){ if(!$(this).find('input[name$="-id"]').val()) $(this).remove(); });
+             if($('#form-body .item-row:visible').length === 0) $('#add-row').click();
+             updateRowIndices();
+        }
+    });
+
+    function processExcel(file) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var data = new Uint8Array(e.target.result);
+            var workbook = XLSX.read(data, {type: 'array', cellDates: true});
+            var jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
+            
+            if (jsonData.length > 1 && confirm("Tìm thấy dữ liệu Excel. Tự động điền vào bảng?")) {
+                // Xóa dữ liệu mới cũ
+                $('#form-body .item-row').not('#empty-form-template .item-row').each(function(){
+                    if(!$(this).find('input[name$="-id"]').val()) $(this).remove();
+                });
+
+            for (var i = 1; i < jsonData.length; i++) {
+                    var row = jsonData[i];
+                    if (!row || row.length === 0) continue;
+
+                    $('#add-row').click();
+                    var lastRow = $('#form-body .item-row').last();
+                    
+                    // Mapping cột theo thứ tự file Excel mới
+                    // Giả sử: Tên(0), ĐVT(1), SL(2), Tình trạng(3), Ghi chú(4)
+                    // (Vì đã bỏ 2 cột ngày ở giữa)
+                    
+                    // Nếu bạn dùng file mẫu cũ (vẫn có cột ngày nhưng bỏ trống) thì index có thể khác.
+                    // Code dưới đây giả định file Excel CŨNG ĐÃ XÓA cột ngày.
+                    
+                    lastRow.find('[name$="-ten_hang_hoa"]').val(row[0] || "");
+                    lastRow.find('[name$="-don_vi_tinh"]').val(row[1] || "Cái");
+                    lastRow.find('[name$="-so_luong"]').val(row[2] || 1);
+                    
+                    // --- ĐÃ XÓA LOGIC NGÀY THÁNG Ở ĐÂY ---
+
+                    // Xử lý Tình trạng (Cột index sẽ thay đổi nếu xóa cột ngày)
+                    // Nếu file Excel CÓ xóa cột ngày -> Tình trạng là cột 3
+                    // Nếu file Excel VẪN CÒN cột ngày -> Tình trạng là cột 5
+                    // Hãy kiểm tra file Excel của bạn. 
+                    // Dưới đây giả định file Excel VẪN CÒN cột ngày nhưng ta lờ đi -> Index vẫn là 5
+                    var rawStatus = row[3] || ""; // Hoặc row[3] nếu file excel đã xóa cột ngày
+                    var ttText = rawStatus.toLowerCase().trim();
+                    
+                    var ttVal = 'binh_thuong';
+                    if (ttText.includes('bình thường') || ttText.includes('tốt') || ttText.includes('ok')) {
+                        ttVal = 'binh_thuong';
+                    } else if (ttText.includes('hư') || ttText.includes('hỏng')) {
+                        ttVal = 'hu_hong';
+                    } else if (ttText.length > 0) {
+                        ttVal = 'khac';
+                        lastRow.find('.condition-other-wrapper').removeClass('d-none');
+                        lastRow.find('[name$="-tinh_trang_khac"]').val(rawStatus);
+                    }
+                    lastRow.find('[name$="-tinh_trang"]').val(ttVal);
+                    
+                    lastRow.find('[name$="-ghi_chu"]').val(row[4] || ""); // Hoặc row[4] nếu xóa cột ngày
+                }
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+});
+</script>
+{% endblock %}

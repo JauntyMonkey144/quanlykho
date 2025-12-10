@@ -1,7 +1,8 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
-from .models import UserProfile, Employee, LoanSlip, LoanItem, LoanImage
+from .models import UserProfile, Employee, LoanSlip, LoanItem, LoanImage, PurchaseSlip, PurchaseItem, PurchaseImage, PurchaseHistory
+from django.utils.html import format_html
 # =========================================
 # 1. QUẢN LÝ NHÂN VIÊN
 # =========================================
@@ -79,3 +80,63 @@ class LoanSlipAdmin(admin.ModelAdmin):
     
     readonly_fields = ('ngay_tao', 'created_by')
     ordering = ('-id',)
+
+class PurchaseItemInline(admin.TabularInline):
+    model = PurchaseItem
+    extra = 0
+    min_num = 1
+    can_delete = True
+    classes = ['collapse']
+
+class PurchaseImageInline(admin.TabularInline):
+    model = PurchaseImage
+    extra = 0
+    readonly_fields = ['preview_image']
+
+    def preview_image(self, obj):
+        if obj.image:
+            # SỬA LỖI: Tách biến ra khỏi chuỗi
+            return format_html(
+                '<img src="{}" style="height: 50px; border-radius: 5px;" />',
+                obj.image.url
+            )
+        return "-"
+    preview_image.short_description = "Xem trước"
+
+class PurchaseHistoryInline(admin.TabularInline):
+    model = PurchaseHistory
+    extra = 0
+    readonly_fields = ['user', 'action', 'timestamp', 'note']
+    can_delete = False
+    classes = ['collapse']
+
+@admin.register(PurchaseSlip)
+class PurchaseSlipAdmin(admin.ModelAdmin):
+    list_display = ('get_id', 'nguoi_de_xuat', 'phong_ban', 'get_status_colored', 'ngay_tao')
+    list_filter = ('status', 'phong_ban', 'ngay_tao')
+    search_fields = ('nguoi_de_xuat', 'ma_nhan_vien', 'id')
+    inlines = [PurchaseItemInline, PurchaseImageInline, PurchaseHistoryInline]
+    readonly_fields = ('ngay_tao', 'ngay_gui', 'ngay_phu_trach_duyet', 'ngay_giam_doc_duyet')
+
+    def get_id(self, obj):
+        return f"#{obj.id:04d}"
+    get_id.short_description = 'Mã phiếu'
+    get_id.admin_order_field = 'id'
+
+    def get_status_colored(self, obj):
+        colors = {
+            'draft': 'gray',
+            'dept_pending': 'blue',
+            'director_pending': 'orange',
+            'approved': 'green',
+            'completed': 'teal',
+            'rejected': 'red',
+        }
+        color = colors.get(obj.status, 'black')
+        # SỬA LỖI: Dùng cú pháp chuẩn {} của format_html
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{}</span>',
+            color,
+            obj.get_status_display()
+        )
+    get_status_colored.short_description = 'Trạng thái'

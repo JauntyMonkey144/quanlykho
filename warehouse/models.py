@@ -35,7 +35,7 @@ class LoanSlip(models.Model):
     
     ly_do = models.TextField("Lý do mượn")
     ghi_chu = models.TextField("Ghi chú", blank=True, null=True)    
-        # Ngày mượn và Trả nằm ở đây (Khớp với Excel)
+    # Ngày mượn và Trả nằm ở đây (Khớp với Excel)
     ngay_muon = models.DateField("Ngày mượn", default=timezone.now)
     ngay_tra_du_kien = models.DateField("Ngày trả dự kiến", null=True, blank=True)
     ngay_tao = models.DateTimeField(auto_now_add=True)
@@ -85,9 +85,6 @@ class LoanItem(models.Model):
     ten_tai_san = models.CharField("Tên tài sản", max_length=200)
     don_vi_tinh = models.CharField("Đơn vị tính", max_length=50)
     so_luong = models.IntegerField("Số lượng", default=1)
-    
-
-    
     TINH_TRANG_CHOICES = (
         ('binh_thuong', 'Bình thường'),
         ('hu_hong', 'Hư hỏng'),
@@ -135,6 +132,154 @@ class UserProfile(models.Model):
     def __str__(self):
         return f"Profile của {self.user.username}"
 
+class PurchaseSlip(models.Model):
+    STATUS_CHOICES = (
+        ('draft', 'Nháp (Chờ gửi)'),
+        ('dept_pending', 'Chờ Phụ trách bộ phận duyệt'), # Bước 1
+        ('director_pending', 'Chờ Giám đốc duyệt'),      # Bước 2
+        ('approved', 'Đã duyệt / Hoàn tất'),             # Kết thúc
+        ('rejected', 'Đã từ chối'),
+    )
+
+    # Thông tin người đề xuất
+    ma_nhan_vien = models.CharField("Mã NV", max_length=20)
+    nguoi_de_xuat = models.CharField("Người đề xuất", max_length=100)
+    email = models.EmailField("Email")
+    chuc_vu = models.CharField("Chức vụ", max_length=100)
+    phong_ban = models.CharField("Phòng ban", max_length=100)
+    
+    ly_do = models.TextField("Lý do đề xuất")
+    nha_cung_cap = models.CharField("Nhà cung cấp (Nếu có)", max_length=200, blank=True, null=True)
+    ghi_chu = models.TextField("Ghi chú chung", blank=True, null=True)
+    
+    ngay_tao = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+
+    # Người duyệt
+    user_phu_trach = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='purchase_phu_trach')
+    user_giam_doc = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='purchase_giam_doc')
+
+    # Logging thời gian
+    ngay_gui = models.DateTimeField(null=True, blank=True)
+    ngay_phu_trach_duyet = models.DateTimeField(null=True, blank=True)
+    ngay_giam_doc_duyet = models.DateTimeField(null=True, blank=True)
+    ngay_tu_choi = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Phiếu mua #{self.id} - {self.nguoi_de_xuat}"
+
+    @property
+    def status_color(self):
+        colors = {
+            'draft': 'secondary',
+            'dept_pending': 'info',
+            'director_pending': 'primary',
+            'approved': 'success',
+            'rejected': 'danger',
+        }
+        return colors.get(self.status, 'secondary')
+
+class PurchaseItem(models.Model):
+    slip = models.ForeignKey(PurchaseSlip, related_name='items', on_delete=models.CASCADE)
+    ten_hang_hoa = models.CharField("Tên hàng hóa, quy cách", max_length=255)
+    don_vi_tinh = models.CharField("ĐVT", max_length=50)
+    so_luong = models.IntegerField("Số lượng", default=1)
+    ghi_chu = models.CharField("Ghi chú", max_length=255, blank=True, null=True)
+
+# 2. CẬP NHẬT PurchaseItem
+class PurchaseItem(models.Model):
+    slip = models.ForeignKey(PurchaseSlip, related_name='items', on_delete=models.CASCADE)
+    ten_hang_hoa = models.CharField("Tên hàng hóa", max_length=255)
+    don_vi_tinh = models.CharField("ĐVT", max_length=50)
+    so_luong = models.IntegerField("Số lượng", default=1)
+    ghi_chu = models.CharField("Ghi chú", max_length=255, blank=True, null=True)
+
+# 3. THÊM MODEL ẢNH CHO MUA HÀNG (MỚI)
+class PurchaseImage(models.Model):
+    slip = models.ForeignKey(PurchaseSlip, related_name='images', on_delete=models.CASCADE)
+    image = models.ImageField(upload_to='purchase_photos/%Y/%m/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+# 4. THÊM MODEL LỊCH SỬ CHO MUA HÀNG (MỚI)
+class PurchaseHistory(models.Model):
+    slip = models.ForeignKey(PurchaseSlip, on_delete=models.CASCADE, related_name='history')
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    action = models.CharField("Hành động", max_length=100)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    note = models.TextField("Ghi chú", blank=True, null=True)
+
+# ==========================================
+# 4. MODULE XUẤT KHO (EXPORT)
+# ==========================================
+
+class ExportSlip(models.Model):
+    STATUS_CHOICES = (
+        ('draft', 'Nháp (Chờ gửi)'),
+        ('dept_pending', 'Chờ Trưởng phòng duyệt'), # Bước 1
+        ('warehouse_pending', 'Chờ Thủ kho duyệt'), # Bước 2
+        ('director_pending', 'Chờ Giám đốc duyệt'), # Bước 3
+        ('completed', 'Đã xuất kho / Hoàn tất'),    # Kết thúc
+        ('rejected', 'Đã từ chối'),
+    )
+
+    # Thông tin người đề xuất
+    ma_nhan_vien = models.CharField("Mã NV", max_length=20)
+    nguoi_de_xuat = models.CharField("Người đề xuất", max_length=100)
+    email = models.EmailField("Email")
+    chuc_vu = models.CharField("Chức vụ", max_length=100)
+    phong_ban = models.CharField("Phòng ban", max_length=100)
+    
+    ly_do = models.TextField("Lý do xuất kho")
+    ghi_chu = models.TextField("Ghi chú chung", blank=True, null=True)
+    
+    ngay_tao = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+
+    # Người duyệt (4 cấp theo file Excel)
+    user_truong_phong = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='exp_truong_phong')
+    user_thu_kho = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='exp_thu_kho')
+    user_giam_doc = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='exp_giam_doc')
+    
+    # Logging thời gian
+    ngay_gui = models.DateTimeField(null=True, blank=True)
+    ngay_truong_phong_duyet = models.DateTimeField(null=True, blank=True)
+    ngay_thu_kho_duyet = models.DateTimeField(null=True, blank=True)
+    ngay_giam_doc_duyet = models.DateTimeField(null=True, blank=True)
+    ngay_tu_choi = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Phiếu xuất #{self.id} - {self.nguoi_de_xuat}"
+
+    @property
+    def status_color(self):
+        colors = {
+            'draft': 'secondary', 'dept_pending': 'info', 
+            'warehouse_pending': 'warning', 'director_pending': 'primary', 
+            'completed': 'success', 'rejected': 'danger'
+        }
+        return colors.get(self.status, 'secondary')
+
+class ExportItem(models.Model):
+    slip = models.ForeignKey(ExportSlip, related_name='items', on_delete=models.CASCADE)
+    ten_hang_hoa = models.CharField("Tên tài sản/thiết bị", max_length=255)
+    don_vi_tinh = models.CharField("ĐVT", max_length=50)
+    so_luong = models.IntegerField("Số lượng", default=1)
+    ghi_chu = models.CharField("Ghi chú", max_length=255, blank=True, null=True)
+
+class ExportImage(models.Model):
+    slip = models.ForeignKey(ExportSlip, related_name='images', on_delete=models.CASCADE)
+    image = models.ImageField(upload_to='export_photos/%Y/%m/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+class ExportHistory(models.Model):
+    slip = models.ForeignKey(ExportSlip, on_delete=models.CASCADE, related_name='history')
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    action = models.CharField("Hành động", max_length=100)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    note = models.TextField("Ghi chú", blank=True, null=True)
+    
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
