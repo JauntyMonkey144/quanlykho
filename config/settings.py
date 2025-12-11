@@ -79,8 +79,18 @@ USE_I18N = True
 USE_TZ = True
 RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
 # Static files (CSS, JavaScript, Images)
-STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_URL = '/static/'
+
+# Nơi chứa file sau khi deploy (Railway dùng cái này)
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# --- THÊM HOẶC SỬA ĐOẠN NÀY ---
+# Nơi chứa file gốc trên máy bạn (Để Django biết chỗ mà lấy)
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
+
+# Cấu hình nén file (Whitenoise)
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Media files (Ảnh upload)
