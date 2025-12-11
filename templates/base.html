@@ -96,14 +96,7 @@
                                         <i class="bi bi-person-circle me-2"></i> Thông tin cá nhân
                                     </a>
                                 </li>
-                            
-                                {% if user.is_superuser %}
-                                <li>
-                                    <a class="dropdown-item" href="{% url 'admin:index' %}" target="_blank">
-                                        <i class="bi bi-gear-fill me-2"></i> Quản trị hệ thống
-                                    </a>
-                                </li>
-                                {% endif %}
+            
                                 
                                 <li><hr class="dropdown-divider"></li>
                                 
