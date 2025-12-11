@@ -236,13 +236,12 @@ def edit_export(request, pk):
 
     return render(request, 'warehouse/edit_export.html', {'form': form, 'item_formset': item_formset, 'slip': slip})
 
-# 3. DANH SÁCH (CÓ LỌC & SẮP XẾP)
+# 2. DANH SÁCH XUẤT KHO (CÓ LỌC)
 @login_required
 def export_list(request):
     slips = ExportSlip.objects.all().order_by('-id')
 
     # --- BỘ LỌC ---
-    # 1. Tìm kiếm từ khóa
     search_query = request.GET.get('q', '')
     if search_query:
         slips = slips.filter(
@@ -251,32 +250,29 @@ def export_list(request):
             Q(ma_nhan_vien__icontains=search_query)
         )
     
-    # 2. Trạng thái
     status = request.GET.get('status', '')
-    if status:
-        slips = slips.filter(status=status)
+    if status: slips = slips.filter(status=status)
 
-    # 3. Phòng ban
     dept = request.GET.get('dept', '')
-    if dept:
-        slips = slips.filter(phong_ban__icontains=dept)
+    if dept: slips = slips.filter(phong_ban__icontains=dept)
 
-    # 4. Ngày tạo
     date_from = request.GET.get('date_from')
     date_to = request.GET.get('date_to')
-    if date_from:
-        slips = slips.filter(ngay_tao__date__gte=date_from)
-    if date_to:
-        slips = slips.filter(ngay_tao__date__lte=date_to)
+    if date_from: slips = slips.filter(ngay_tao__date__gte=date_from)
+    if date_to: slips = slips.filter(ngay_tao__date__lte=date_to)
+
+    # --- SẮP XẾP ---
+    sort_by = request.GET.get('sort', '-id')
+    valid_sort = ['id', 'nguoi_de_xuat', 'phong_ban', 'ngay_tao', 'status']
+    if sort_by.lstrip('-') in valid_sort:
+        slips = slips.order_by(sort_by)
 
     context = {
         'slips': slips,
         'status_choices': ExportSlip.STATUS_CHOICES,
-        'current_search': search_query,
-        'current_status': status,
-        'current_dept': dept,
-        'current_date_from': date_from,
-        'current_date_to': date_to,
+        'current_search': search_query, 'current_status': status,
+        'current_dept': dept, 'current_sort': sort_by,
+        'current_date_from': date_from, 'current_date_to': date_to,
     }
     return render(request, 'warehouse/export_list.html', context)
 
@@ -1212,12 +1208,46 @@ def purchase_action(request, pk, action):
     messages.success(request, f"Đã cập nhật trạng thái: {slip.get_status_display()}")
     return redirect('purchase_detail', pk=pk)
 
-# --- VIEW DANH SÁCH PHIẾU MUA ---
+# 1. DANH SÁCH MUA HÀNG (CÓ LỌC)
 @login_required
 def purchase_list(request):
-    # Lấy tất cả phiếu mua, mới nhất lên đầu
     slips = PurchaseSlip.objects.all().order_by('-id')
-    return render(request, 'warehouse/purchase_list.html', {'slips': slips})
+
+    # --- BỘ LỌC ---
+    search_query = request.GET.get('q', '')
+    if search_query:
+        slips = slips.filter(
+            Q(id__icontains=search_query) | 
+            Q(nguoi_de_xuat__icontains=search_query) | 
+            Q(ma_nhan_vien__icontains=search_query) |
+            Q(nha_cung_cap__icontains=search_query)
+        )
+    
+    status = request.GET.get('status', '')
+    if status: slips = slips.filter(status=status)
+
+    dept = request.GET.get('dept', '')
+    if dept: slips = slips.filter(phong_ban__icontains=dept)
+
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
+    if date_from: slips = slips.filter(ngay_tao__date__gte=date_from)
+    if date_to: slips = slips.filter(ngay_tao__date__lte=date_to)
+
+    # --- SẮP XẾP ---
+    sort_by = request.GET.get('sort', '-id')
+    valid_sort = ['id', 'nguoi_de_xuat', 'phong_ban', 'ngay_tao', 'status', 'nha_cung_cap']
+    if sort_by.lstrip('-') in valid_sort:
+        slips = slips.order_by(sort_by)
+
+    context = {
+        'slips': slips,
+        'status_choices': PurchaseSlip.STATUS_CHOICES,
+        'current_search': search_query, 'current_status': status,
+        'current_dept': dept, 'current_sort': sort_by,
+        'current_date_from': date_from, 'current_date_to': date_to,
+    }
+    return render(request, 'warehouse/purchase_list.html', context)
     
 # 3. XUẤT PDF
 def export_purchase_pdf(request, pk):
