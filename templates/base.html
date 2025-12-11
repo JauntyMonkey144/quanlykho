@@ -3,167 +3,142 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Hệ Thống Kho{% endblock %}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <title>{% block title %}Quản Lý Kho{% endblock %}</title>
+    
     {% load static %}
     <link rel="shortcut icon" type="image/png" href="{% static 'images/favicon.png' %}"/>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
     <style>
-        body { background-color: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .card { border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: none; }
-        .navbar { box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
-        /* CSS cho vùng Upload */
-    .upload-area {
-        border: 2px dashed #cbd5e1; /* Viền nét đứt màu xám nhạt */
-        border-radius: 12px;
-        background-color: #fff;
-        padding: 2rem;
-        text-align: center;
-        cursor: pointer;
-        transition: all 0.3s ease; /* Hiệu ứng chuyển động mượt */
-        position: relative;
-    }
+        /* MÀU XUẤT KHO (CAM) */
+        :root {
+            --export-color: #fd7e14;
+            --export-hover: #e3690b;
+            --export-bg-subtle: #fff1e5;
+        }
+        .text-export { color: var(--export-color) !important; }
+        .bg-export { background-color: var(--export-color) !important; color: white !important; }
+        .bg-export-subtle { background-color: var(--export-bg-subtle) !important; color: #664d03 !important; }
+        .btn-export { background-color: var(--export-color); border-color: var(--export-color); color: white; font-weight: bold; }
+        .btn-export:hover { background-color: var(--export-hover); border-color: var(--export-hover); color: white; }
+        .btn-outline-export { color: var(--export-color); border-color: var(--export-color); font-weight: bold; }
+        .btn-outline-export:hover { background-color: var(--export-color); color: white; }
+        .border-export { border-color: var(--export-color) !important; }
 
-    /* Hiệu ứng khi rê chuột vào */
-    .upload-area:hover {
-        border-color: #3b82f6; /* Đổi màu viền thành xanh dương */
-        background-color: #f8fafc;
-    }
-
-    /* HIỆU ỨNG KHI KÉO FILE VÀO (Class này sẽ được JS thêm vào) */
-    .upload-area.drag-over {
-        border-style: solid;       /* Chuyển thành viền liền */
-        border-color: #10b981;     /* Màu xanh lá */
-        background-color: #ecfdf5; /* Nền xanh lá nhạt */
-        transform: scale(1.02);    /* Phóng to nhẹ 1 chút */
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    }
-
-    /* CSS cho nút bấm bên trong để nó không chặn sự kiện click của cha */
-    .upload-content {
-        pointer-events: auto; /* Quan trọng: Để click vào nút cũng như click vào khung */
-    }
-
-    /* Style riêng cho Excel Dropzone */
-    .excel-upload-area {
-        border: 2px dashed #a3cfbb; /* Viền xanh lá nhạt */
-        border-radius: 12px;
-        background-color: #fff;
-        padding: 2rem;
-        text-align: center;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        position: relative;
-    }
-
-    /* --- BỘ MÀU XUẤT KHO (CAM ĐẬM) --- */
-    :root {
-        --export-color: #fd7e14; /* Cam đậm */
-        --export-hover: #e3690b; /* Cam tối hơn khi hover */
-        --export-bg-subtle: #fff1e5; /* Nền nhạt cho bảng */
-    }
-
-    /* Chữ & Icon */
-    .text-export { color: var(--export-color) !important; }
-    
-    /* Nền đậm (Header, Badge) - Chữ trắng sẽ nổi bật */
-    .bg-export { background-color: var(--export-color) !important; color: white !important; }
-    
-    /* Nền nhạt (Header bảng danh sách) */
-    .bg-export-subtle { background-color: var(--export-bg-subtle) !important; color: #664d03 !important; }
-
-    /* Nút bấm (Solid) */
-    .btn-export { 
-        background-color: var(--export-color); 
-        border-color: var(--export-color); 
-        color: white; 
-        font-weight: bold;
-    }
-    .btn-export:hover { background-color: var(--export-hover); border-color: var(--export-hover); color: white; }
-
-    /* Nút bấm (Outline) */
-    .btn-outline-export { 
-        color: var(--export-color); 
-        border-color: var(--export-color); 
-        font-weight: bold;
-    }
-    .btn-outline-export:hover { 
-        background-color: var(--export-color); 
-        color: white; 
-    }
-    
-    /* Border */
-    .border-export { border-color: var(--export-color) !important; }
-    
-    .excel-upload-area:hover {
-        border-color: #198754; /* Xanh lá đậm khi hover */
-        background-color: #f8fffb;
-    }
-
-    /* Hiệu ứng khi kéo file vào */
-    .excel-upload-area.drag-over-excel {
-        border-style: solid;
-        border-color: #198754;
-        background-color: #d1e7dd; /* Nền xanh lá */
-        transform: scale(1.02);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    }
+        /* Navbar Custom */
+        .navbar-brand { font-weight: 800; letter-spacing: 1px; }
+        .nav-link { font-weight: 500; transition: all 0.2s; }
+        .nav-link:hover { color: white !important; transform: translateY(-1px); }
+        
+        /* Shortcut buttons effect */
+        .nav-shortcut i { font-size: 1.1rem; margin-right: 4px; }
+        
+        /* Dropdown hover on desktop */
+        @media (min-width: 992px) {
+            .navbar-nav .dropdown:hover .dropdown-menu { display: block; margin-top: 0; }
+        }
     </style>
 </head>
-<body>
+<body class="bg-light d-flex flex-column min-vh-100">
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm sticky-top">
         <div class="container">
-            <a class="navbar-brand fw-bold" href="/"><i class="bi bi-box-seam"></i> SUN AUTOMATION</a>
-            <div class="collapse navbar-collapse">
-                <ul class="navbar-nav me-auto">
-                </ul>
+            <a class="navbar-brand text-warning" href="{% url 'home' %}">
+                <i class="bi bi-box-seam-fill"></i> KHO VẬT TƯ
+            </a>
+
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarContent">
                 
-                <div class="d-flex text-white">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0 gap-2">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'home' %}">Tổng quan</a>
+                    </li>
+                    
+                    <li class="nav-item">
+                        <a class="nav-link nav-shortcut d-flex align-items-center" href="{% url 'create_loan' %}" title="Tạo phiếu mượn">
+                            <i class="bi bi-cart-plus-fill text-primary"></i> <span class="text-white-50">Mượn</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link nav-shortcut d-flex align-items-center" href="{% url 'create_purchase' %}" title="Tạo phiếu mua">
+                            <i class="bi bi-bag-plus-fill text-success"></i> <span class="text-white-50">Mua</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link nav-shortcut d-flex align-items-center" href="{% url 'create_export' %}" title="Tạo phiếu xuất">
+                            <i class="bi bi-box-arrow-right text-export"></i> <span class="text-white-50">Xuất</span>
+                        </a>
+                    </li>
+                </ul>
+
+                <ul class="navbar-nav ms-auto mb-2 mb-lg-0 align-items-lg-center gap-2">
                     {% if user.is_authenticated %}
-                        <div class="dropdown">
-                            <button class="btn btn-light btn-sm dropdown-toggle text-primary fw-bold" type="button" data-bs-toggle="dropdown">
-                                <i class="bi bi-person-circle"></i> {{ user.username }}
-                            </button>
-                            <ul class="dropdown-menu">
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 32px; height: 32px;">
+                                    {{ user.username|slice:":1"|upper }}
+                                </div>
+                                <span>{{ user.last_name }} {{ user.first_name }}</span>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" aria-labelledby="userDropdown">
+                                <li><h6 class="dropdown-header">Xin chào, {{ user.username }}!</h6></li>
+                                <li><a class="dropdown-item" href="{% url 'admin:index' %}" target="_blank"><i class="bi bi-gear"></i> Quản trị Admin</a></li>
+                                <li><hr class="dropdown-divider"></li>
                                 <li>
-                                    <a class="dropdown-item" href="{% url 'profile' %}">
-                                        <i class="bi bi-person-lines-fill me-2"></i> Thông tin cá nhân
-                                    </a>
-                                </li>
-                                <li>
-                                    <form action="{% url 'logout' %}" method="post">
+                                    <form method="post" action="{% url 'logout' %}" class="d-inline">
                                         {% csrf_token %}
-                                        <button class="dropdown-item text-danger" type="submit">Đăng xuất</button>
+                                        <button type="submit" class="dropdown-item text-danger"><i class="bi bi-box-arrow-right"></i> Đăng xuất</button>
                                     </form>
                                 </li>
                             </ul>
-                        </div>
+                        </li>
                     {% else %}
-                        <a href="{% url 'login' %}" class="btn btn-light btn-sm me-2">Đăng nhập</a>
-                        <a href="{% url 'register' %}" class="btn btn-outline-light btn-sm">Đăng ký</a>
+                        <li class="nav-item">
+                            <a class="nav-link btn btn-outline-light btn-sm px-3 text-white" href="{% url 'login' %}">Đăng nhập</a>
+                        </li>
                     {% endif %}
-                </div>
+                </ul>
             </div>
         </div>
     </nav>
 
-    <div class="container mb-5">
+    <main class="container py-4 flex-grow-1">
         {% if messages %}
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            {% endfor %}
+            <div class="mb-4">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
+                        {% if message.tags == 'success' %}<i class="bi bi-check-circle-fill me-2"></i>
+                        {% elif message.tags == 'error' %}<i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        {% elif message.tags == 'warning' %}<i class="bi bi-exclamation-circle-fill me-2"></i>
+                        {% endif %}
+                        {{ message|safe }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            </div>
         {% endif %}
 
         {% block content %}{% endblock %}
-    </div>
+    </main>
 
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <footer class="bg-white py-3 mt-auto border-top text-center text-muted small">
+        <div class="container">
+            &copy; {% now "Y" %} Hệ thống Quản lý Kho - <span class="fw-bold text-primary">Sun Automation</span>.
+        </div>
+    </footer>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>
