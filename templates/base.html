@@ -83,13 +83,10 @@
                     {% if user.is_authenticated %}
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 32px; height: 32px;">
-                                    {{ user.username|slice:":1"|upper }}
-                                </div>
                                 <span>{{ user.last_name }} {{ user.first_name }}</span>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" aria-labelledby="userDropdown">
-                                <li><h6 class="dropdown-header">Xin chào, {{ user.username }}!</h6></li>
+                                <li><h6 class="dropdown-header">Xin chào, {{ user.last_name }} {{ user.first_name }}!</h6></li>
                                 
                                 <li>
                                     <a class="dropdown-item" href="{% url 'profile' %}">
