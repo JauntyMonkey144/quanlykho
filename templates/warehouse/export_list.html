@@ -1,21 +1,67 @@
 {% extends "base.html" %}
+{% load auth_extras %}
+{% load url_extras %} 
+
 {% block title %}Danh Sách Phiếu Xuất Kho{% endblock %}
+
 {% block content %}
-<div class="card shadow-sm">
-    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-        <h4 class="mb-0 text-export fw-bold"><i class="bi bi-box-seam-fill"></i> DANH SÁCH PHIẾU XUẤT</h4>
-        <a href="{% url 'create_export' %}" class="btn btn-export"><i class="bi bi-plus-lg"></i> Tạo phiếu mới</a>
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-white py-3">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="mb-0 text-export fw-bold"><i class="bi bi-box-seam-fill"></i> DANH SÁCH PHIẾU XUẤT</h4>
+            <a href="{% url 'create_export' %}" class="btn btn-export fw-bold shadow-sm">
+                <i class="bi bi-plus-lg"></i> Tạo phiếu mới
+            </a>
+        </div>
+
+        <form method="get" class="row g-2 align-items-end">
+            {% if current_sort %}<input type="hidden" name="sort" value="{{ current_sort }}">{% endif %}
+
+            <div class="col-md-3">
+                <label class="small text-muted fw-bold">Tìm kiếm</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                    <input type="text" name="q" class="form-control" placeholder="Mã phiếu, Tên, Mã NV..." value="{{ current_search }}">
+                </div>
+            </div>
+            <div class="col-md-2">
+                <label class="small text-muted fw-bold">Phòng ban</label>
+                <input type="text" name="dept" class="form-control" value="{{ current_dept }}">
+            </div>
+            <div class="col-md-2">
+                <label class="small text-muted fw-bold">Trạng thái</label>
+                <select name="status" class="form-select">
+                    <option value="">Tất cả</option>
+                    {% for code, label in status_choices %}
+                        <option value="{{ code }}" {% if current_status == code %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="small text-muted fw-bold">Ngày tạo</label>
+                <div class="input-group">
+                    <input type="date" name="date_from" class="form-control" value="{{ current_date_from }}">
+                    <span class="input-group-text">-</span>
+                    <input type="date" name="date_to" class="form-control" value="{{ current_date_to }}">
+                </div>
+            </div>
+            <div class="col-md-2 d-flex gap-1">
+                <button type="submit" class="btn btn-export flex-grow-1"><i class="bi bi-funnel"></i> Lọc</button>
+                <a href="{% url 'export_list' %}" class="btn btn-outline-secondary"><i class="bi bi-x-lg"></i></a>
+            </div>
+        </form>
     </div>
+
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover mb-0 align-middle">
+            <table class="table table-hover mb-0 align-middle text-nowrap">
                 <thead class="bg-export-subtle border-bottom border-export">
                     <tr>
-                        <th>Mã Phiếu</th>
-                        <th>Người đề xuất</th>
+                        <th><a href="?{% param_replace sort='id' %}" class="text-dark text-decoration-none">Mã Phiếu {% if 'id' in current_sort %}<i class="bi bi-sort-down text-export"></i>{% endif %}</a></th>
+                        <th><a href="?{% param_replace sort='nguoi_de_xuat' %}" class="text-dark text-decoration-none">Người đề xuất {% if 'nguoi' in current_sort %}<i class="bi bi-sort-alpha-down text-export"></i>{% endif %}</a></th>
                         <th>Phòng ban</th>
                         <th>Lý do</th>
-                        <th>Ngày tạo</th>
+                        <th><a href="?{% param_replace sort='ngay_tao' %}" class="text-dark text-decoration-none">Ngày tạo {% if 'ngay' in current_sort %}<i class="bi bi-sort-down text-export"></i>{% endif %}</a></th>
                         <th>Trạng thái</th>
                         <th class="text-center">Hành động</th>
                     </tr>
@@ -23,24 +69,44 @@
                 <tbody>
                     {% for slip in slips %}
                     <tr>
-                        <td class="fw-bold text-export">#{{ slip.id|stringformat:"04d" }}</td>
+                        <td class="fw-bold text-export"><a href="{% url 'export_detail' slip.id %}" class="text-decoration-none text-export">#{{ slip.id|stringformat:"04d" }}</a></td>
                         <td><div class="fw-bold">{{ slip.nguoi_de_xuat }}</div><small class="text-muted">{{ slip.ma_nhan_vien }}</small></td>
                         <td>{{ slip.phong_ban }}</td>
                         <td>{{ slip.ly_do|truncatechars:30 }}</td>
                         <td>{{ slip.ngay_tao|date:"d/m/Y" }}</td>
                         <td>
-                            <span class="badge bg-{{ slip.status_color }} px-3 py-2 rounded-pill">{{ slip.get_status_display }}</span>
+                            <span class="badge bg-{{ slip.status_color }} px-3 py-2 rounded-pill border border-{{ slip.status_color }} bg-opacity-10 text-{{ slip.status_color }}">
+                                {{ slip.get_status_display }}
+                            </span>
                         </td>
                         <td class="text-center">
-                            <a href="{% url 'export_detail' slip.id %}" class="btn btn-outline-export btn-sm border-0"><i class="bi bi-eye-fill fs-5"></i></a>
+                            <a href="{% url 'export_detail' slip.id %}" class="btn btn-sm btn-outline-export border-0"><i class="bi bi-eye-fill fs-5"></i></a>
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="7" class="text-center py-4 text-muted">Chưa có phiếu nào.</td></tr>
+                    <tr><td colspan="7" class="text-center py-5 text-muted">Không tìm thấy phiếu nào.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
+    <div class="card-footer bg-white py-3"><small class="text-muted">Hiển thị <strong>{{ slips.count }}</strong> kết quả.</small></div>
 </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentSort = urlParams.get('sort') || '-id';
+        document.querySelectorAll('thead th a').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const href = new URL(this.href);
+                const newSort = href.searchParams.get('sort');
+                if (currentSort === newSort) href.searchParams.set('sort', '-' + newSort);
+                else if (currentSort === '-' + newSort) href.searchParams.set('sort', newSort);
+                window.location.href = href.toString();
+            });
+        });
+    });
+</script>
 {% endblock %}
