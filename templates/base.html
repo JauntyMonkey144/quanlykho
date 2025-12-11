@@ -90,12 +90,29 @@
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" aria-labelledby="userDropdown">
                                 <li><h6 class="dropdown-header">Xin chào, {{ user.username }}!</h6></li>
-                                <li><a class="dropdown-item" href="{% url 'admin:index' %}" target="_blank"><i class="bi bi-gear"></i> Thông tin cá nhân</a></li>
+                                
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'profile' %}">
+                                        <i class="bi bi-person-circle me-2"></i> Thông tin cá nhân
+                                    </a>
+                                </li>
+                            
+                                {% if user.is_superuser %}
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'admin:index' %}" target="_blank">
+                                        <i class="bi bi-gear-fill me-2"></i> Quản trị hệ thống
+                                    </a>
+                                </li>
+                                {% endif %}
+                                
                                 <li><hr class="dropdown-divider"></li>
+                                
                                 <li>
                                     <form method="post" action="{% url 'logout' %}" class="d-inline">
                                         {% csrf_token %}
-                                        <button type="submit" class="dropdown-item text-danger"><i class="bi bi-box-arrow-right"></i> Đăng xuất</button>
+                                        <button type="submit" class="dropdown-item text-danger">
+                                            <i class="bi bi-box-arrow-right me-2"></i> Đăng xuất
+                                        </button>
                                     </form>
                                 </li>
                             </ul>
