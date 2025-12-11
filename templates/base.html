@@ -46,7 +46,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm sticky-top">
         <div class="container">
             <a class="navbar-brand text-warning" href="{% url 'home' %}">
-                <i class="bi bi-box-seam-fill"></i> KHO VẬT TƯ
+                <i class="bi bi-box-seam-fill"></i> SUN AUTOMATION
             </a>
 
             <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
@@ -57,24 +57,24 @@
                 
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0 gap-2">
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'home' %}">Tổng quan</a>
+                        <a class="nav-link" href="{% url 'home' %}">Trang chủ</a>
                     </li>
                     
                     <li class="nav-item">
                         <a class="nav-link nav-shortcut d-flex align-items-center" href="{% url 'create_loan' %}" title="Tạo phiếu mượn">
-                            <i class="bi bi-cart-plus-fill text-primary"></i> <span class="text-white-50">Mượn</span>
+                            <i class="bi bi-cart-plus-fill text-primary"></i> <span class="text-white-50">Phiếu mượn hàng</span>
                         </a>
                     </li>
 
                     <li class="nav-item">
                         <a class="nav-link nav-shortcut d-flex align-items-center" href="{% url 'create_purchase' %}" title="Tạo phiếu mua">
-                            <i class="bi bi-bag-plus-fill text-success"></i> <span class="text-white-50">Mua</span>
+                            <i class="bi bi-bag-plus-fill text-success"></i> <span class="text-white-50">Phiếu mua hàng</span>
                         </a>
                     </li>
 
                     <li class="nav-item">
                         <a class="nav-link nav-shortcut d-flex align-items-center" href="{% url 'create_export' %}" title="Tạo phiếu xuất">
-                            <i class="bi bi-box-arrow-right text-export"></i> <span class="text-white-50">Xuất</span>
+                            <i class="bi bi-box-arrow-right text-export"></i> <span class="text-white-50">Phiếu xuất kho</span>
                         </a>
                     </li>
                 </ul>
@@ -90,7 +90,7 @@
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" aria-labelledby="userDropdown">
                                 <li><h6 class="dropdown-header">Xin chào, {{ user.username }}!</h6></li>
-                                <li><a class="dropdown-item" href="{% url 'admin:index' %}" target="_blank"><i class="bi bi-gear"></i> Quản trị Admin</a></li>
+                                <li><a class="dropdown-item" href="{% url 'admin:index' %}" target="_blank"><i class="bi bi-gear"></i> Thông tin cá nhân</a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <form method="post" action="{% url 'logout' %}" class="d-inline">
