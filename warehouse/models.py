@@ -284,10 +284,17 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 @receiver(post_save, sender=User)
-def create_user_profile(sender, instance, created, **kwargs):
+def create_or_update_user_profile(sender, instance, created, **kwargs):
+    """
+    Tự động tạo hoặc cập nhật UserProfile khi User được lưu.
+    Khắc phục lỗi 500 khi đổi mật khẩu cho user cũ.
+    """
     if created:
+        # Nếu là user mới toanh -> Tạo profile
         UserProfile.objects.create(user=instance)
-
-@receiver(post_save, sender=User)
-def save_user_profile(sender, instance, **kwargs):
-    instance.profile.save()
+    else:
+        # Nếu là user cũ vừa chỉnh sửa (ví dụ đổi pass)
+        # Dùng get_or_create để đảm bảo không lỗi nếu profile chưa tồn tại
+        UserProfile.objects.get_or_create(user=instance)
+        # Sau đó lưu (nếu cần thiết, thực ra get_or_create đã lưu rồi)
+        instance.profile.save()
